@@ -1,0 +1,40 @@
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+        exclude: ^(docs/|.vscode/|package.json)
+      - id: check-toml
+      - id: no-commit-to-branch
+        args: [--branch, main]
+      - id: pretty-format-json
+        exclude: ^(docs/|.vscode/|package.json)
+        args: [--autofix, --indent=4, --no-sort-keys]
+      - id: end-of-file-fixer
+        exclude: ".*\\.md"
+      - id: check-added-large-files
+      - id: requirements-txt-fixer
+        files: "requirements.*\\.in"
+      - id: debug-statements
+      - id: detect-private-key
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.17
+    hooks:
+      - id: mdformat
+        files: ".*\\.md"
+        exclude: "CHANGELOG\\.md"
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        args: [--install-types, --non-interactive]
