@@ -7,6 +7,6 @@
 ```bash
 conda create -n allknower python=3.12.5 -y
 conda activate allknower
-pip install --no-cache-dir -r requirements/requirements.txt
+pip install --no-cache-dir -r requirements/requirements-dev.txt
 pre-commit install
 ```
