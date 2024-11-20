@@ -1,2 +1,6 @@
+bm25s~=0.2.4
 ir_datasets~=0.5.8
+nltk~=3.9.1
 notebook~=7.2.2
+pandas~=2.2.3
+scikit-learn~=1.5.2
