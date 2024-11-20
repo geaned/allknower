@@ -46,7 +46,7 @@ fi
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
 # Define the pattern: feature/AK[sprint_number]-[ticket-number-within-sprint]{/developer-nickname-in-GitHub]} -- last part in curly brackets is optional and can be omitted
-PATTERN="^feature\/AK[1-9]\d*-[1-9]\d*(\/[a-zA-Z0-9-]+)?$"
+PATTERN="^feature\/AK[1-9][0-9]*-[1-9][0-9]*(\/[a-zA-Z0-9-]+)?$"
 
 if [[ ! $BRANCH_NAME =~ $PATTERN ]]; then
   echo "Error: branch name '$BRANCH_NAME' does not match the naming convention."
