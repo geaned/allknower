@@ -32,6 +32,10 @@ def parse_args() -> argparse.Namespace:
         help="Parse a document with a certain title (used in single mode)"
     )
     parser.add_argument(
+        "--no-images", action="store_true",
+        help="Parse a document with a certain title (used in single mode)"
+    )
+    parser.add_argument(
         "--output", type=str, default="result.json",
         help="Path to output file (used in single mode)"
     )

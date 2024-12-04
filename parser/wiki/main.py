@@ -107,6 +107,7 @@ def main(args):
     mode: str = args.mode
     title: str = args.title
     output_file: str = args.output
+    with_images: bool = not args.no_images
 
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
@@ -119,7 +120,7 @@ def main(args):
         if entry.title != title:
             continue
 
-        doc = DocBuilder.from_entry(entry)
+        doc = DocBuilder.from_entry(entry, with_images)
         with open(output_file, 'w') as result:
             json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
 
