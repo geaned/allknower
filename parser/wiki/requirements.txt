@@ -1,1 +1,2 @@
+mediawiki_dump==1.3.0
 mwparserfromhell==0.6
