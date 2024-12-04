@@ -1,4 +1,3 @@
-from curses import KEY_MARK
 import json
 
 from mediawiki_dump.entry import DumpEntry
