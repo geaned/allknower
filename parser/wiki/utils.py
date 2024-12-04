@@ -39,5 +39,9 @@ def parse_args() -> argparse.Namespace:
         "--output", type=str, default="result.json",
         help="Path to output file (used in single mode)"
     )
+    parser.add_argument(
+        "--num-workers", type=int, default=1,
+        help="Amount of workers used for dump processing (used in stream mode)"
+    )
 
     return parser.parse_args()

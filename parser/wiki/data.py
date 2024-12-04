@@ -1,12 +1,9 @@
-# import hashlib
-import mwparserfromhell
-import regex
-
-from mwparserfromhell.nodes._base import Node
-from mwparserfromhell.wikicode import Wikicode
-
 from dataclasses import dataclass
+# import hashlib
 from typing import List, Union
+
+import mwparserfromhell
+
 
 @dataclass
 class ImageData:
@@ -27,8 +24,11 @@ class ContentData:
         self.text = self.__parse(s)
 
     def __parse(self, s: str):
-        nodes = mwparserfromhell.parse(s).nodes     # useful for debugging with types
-        filtered: List[Union[Node, Wikicode]] = list()
+        nodes = mwparserfromhell.parse(s).nodes
+        filtered: List[Union[
+            mwparserfromhell.nodes._base.Node,
+            mwparserfromhell.wikicode.Wikicode
+        ]] = list()
 
         for node in nodes:
             if isinstance(node, (

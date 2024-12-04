@@ -1,10 +1,9 @@
 import json
-import regex
+from multiprocessing import Pool
+from typing import Dict, List, Optional, Tuple
 
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
-
-from typing import Dict, List, Optional, Tuple
 
 from data import ContentData, ImageData
 from utils import make_par_id, make_mediawiki_stream, parse_args
@@ -34,13 +33,12 @@ class DocBuilder():
         if parsed[0].redirect:
             doc.redirect = True
 
-        # TODO: add heuristics which would not pass technical contents
         doc.contents = [
             (make_par_id(entry.page_id, par.id), par.text)
             for par in parsed
             if (
                 par.text
-                and par.has_text                # remove technical lists and other data consitints of tags and links
+                and par.has_text
             )
         ]
 
@@ -102,29 +100,38 @@ class DocBuilder():
         }
 
 
+def parse_entry(entry: DumpEntry, with_images: bool, output_file: Optional[str] = None):
+    doc = DocBuilder.from_entry(entry, with_images)
+
+    if output_file is None:
+        output_file = f'page_{doc.doc_id}.json'
+
+    with open(output_file, 'w') as result:
+        json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
+
+
 def main(args):
     file_name: str = args.file
     mode: str = args.mode
     title: str = args.title
     output_file: str = args.output
     with_images: bool = not args.no_images
+    num_workers: int = args.num_workers
 
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
 
     if mode == "stream":
-        # TODO: add stream mode
-        return
+        with Pool(processes=num_workers) as pool:
+            for entry in reader.read(dump):
+                pool.apply(parse_entry, (entry, with_images))
+    
+    if mode == "single":
+        for entry in reader.read(dump):
+            if entry.title == title:
+                break
 
-    for entry in reader.read(dump):
-        if entry.title != title:
-            continue
-
-        doc = DocBuilder.from_entry(entry, with_images)
-        with open(output_file, 'w') as result:
-            json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
-
-        break
+        parse_entry(entry, with_images, output_file)
 
 
 if __name__ == '__main__':
