@@ -1,5 +1,6 @@
 # import hashlib
 import mwparserfromhell
+import regex
 
 from mwparserfromhell.nodes._base import Node
 from mwparserfromhell.wikicode import Wikicode
@@ -18,8 +19,10 @@ class ContentData:
     def __init__(self, idx: int, s: str):
         self.id = idx
         self.redirect = False
+        self.has_text = False
 
         self.links: List[str] = list()
+        self.categories: List[str] = list()
         self.images: List[ImageData] = list()
         self.text = self.__parse(s)
 
@@ -27,18 +30,17 @@ class ContentData:
         nodes = mwparserfromhell.parse(s).nodes     # useful for debugging with types
         filtered: List[Union[Node, Wikicode]] = list()
 
-        # used for debugging
-        # for node in nodes:
-        #     print(type(node))
-        #     print(node)
-        #     print()
-
         for node in nodes:
             if isinstance(node, (
                 mwparserfromhell.nodes.Template,
-                mwparserfromhell.nodes.Tag,
                 mwparserfromhell.nodes.Heading,
+                mwparserfromhell.nodes.Comment,
             )):
+                continue
+
+            if isinstance(node, mwparserfromhell.nodes.Tag):
+                if str(node).startswith('\'\'\'') and node.endswith('\'\'\''):
+                    filtered.append(node.contents)
                 continue
 
             if isinstance(node, mwparserfromhell.nodes.Wikilink):
@@ -51,6 +53,12 @@ class ContentData:
                         "",
                         ""
                     ))
+                    continue
+
+                if node.title.startswith('Category:'):
+                    category_title = str(node.title).replace('Category:', '')
+                    self.categories.append(category_title)
+                    continue
 
                 if node.text is not None:
                     filtered.append(node.text)
@@ -59,6 +67,10 @@ class ContentData:
                 
                 self.links.append(str(node.title))
                 continue
+
+            if isinstance(node, mwparserfromhell.nodes.text.Text):
+                if any(x.isalpha() for x in str(node)):
+                    self.has_text = True
 
             filtered.append(node)
         
@@ -73,6 +85,9 @@ class ContentData:
         return self.text
 
     def get_links(self):
+        return self.links
+
+    def get_categories(self):
         return self.links
 
     def get_images(self):

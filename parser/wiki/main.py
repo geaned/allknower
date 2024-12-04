@@ -1,9 +1,10 @@
 import json
+import regex
 
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
 
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from data import ContentData, ImageData
 from utils import make_par_id, make_mediawiki_stream, parse_args
@@ -37,12 +38,14 @@ class DocBuilder():
         doc.contents = [
             (make_par_id(entry.page_id, par.id), par.text)
             for par in parsed
-            if not par.get_images()     # believe that images are not contained within text paragraphs
+            if (
+                par.text
+                and par.has_text                # remove technical lists and other data consitints of tags and links
+            )
         ]
 
-        doc.references, doc.categories = DocBuilder.parse_links(
-            link for par in parsed for link in par.get_links()
-        )
+        doc.references = [link for par in parsed for link in par.get_links()]
+        doc.categories = [link for par in parsed for link in par.get_categories()]
 
         if with_images:
             doc.images = {
@@ -54,26 +57,12 @@ class DocBuilder():
 
     @staticmethod
     def parse_content(data: str):
-        return [ContentData(idx, raw) for idx, raw in enumerate(data.split('\n\n'))]
-
-    @staticmethod
-    def parse_links(links: Iterable[str]) -> Tuple[List[str], List[str]]:
-        references: List[str] = list()
-        categories: List[str] = list()
-
-        for link in links:
-            if link.startswith('Category:'):
-                categories.append(link.replace('Category:', ''))
-                continue
-
-            references.append(link)
-        
-        return references, categories
+        return [ContentData(idx, raw) for idx, raw in enumerate(data.replace('\t', '').split('\n\n'))]
 
     def as_dict(self):
         if self.redirect:
             if not self.references:
-                raise ValueError('Redirect page has no references')
+                raise RuntimeError(f'Redirect page {self.title} has no references')
             return {
                 'redirect': True,
                 'redirect_to': self.references[0]
@@ -130,7 +119,7 @@ def main(args):
         if entry.title != title:
             continue
 
-        doc = DocBuilder.from_entry(entry, with_images=False)
+        doc = DocBuilder.from_entry(entry)
         with open(output_file, 'w') as result:
             json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
 
