@@ -5,7 +5,7 @@ from mwparserfromhell.nodes._base import Node
 from mwparserfromhell.wikicode import Wikicode
 
 from dataclasses import dataclass
-from typing import List, Union, cast
+from typing import List, Union
 
 @dataclass
 class ImageData:

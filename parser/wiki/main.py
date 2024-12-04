@@ -4,7 +4,7 @@ import json
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from data import ContentData, ImageData
 from utils import make_par_id, make_mediawiki_stream, parse_args
