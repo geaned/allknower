@@ -17,6 +17,8 @@ class ImageData:
 class ContentData:
     def __init__(self, idx: int, s: str):
         self.id = idx
+        self.redirect = False
+
         self.links: List[str] = list()
         self.images: List[ImageData] = list()
         self.text = self.__parse(s)
@@ -24,6 +26,12 @@ class ContentData:
     def __parse(self, s: str):
         nodes = mwparserfromhell.parse(s).nodes     # useful for debugging with types
         filtered: List[Union[Node, Wikicode]] = list()
+
+        # used for debugging
+        # for node in nodes:
+        #     print(type(node))
+        #     print(node)
+        #     print()
 
         for node in nodes:
             if isinstance(node, (
@@ -54,7 +62,12 @@ class ContentData:
 
             filtered.append(node)
         
-        return "".join(map(str, filtered)).strip()
+        result = "".join(map(str, filtered)).strip()
+
+        if result.startswith('REDIRECT'):
+            self.redirect = True
+        
+        return result
 
     def __str__(self):
         return self.text

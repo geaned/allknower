@@ -1,3 +1,4 @@
+from curses import KEY_MARK
 import json
 
 from mediawiki_dump.entry import DumpEntry
@@ -15,6 +16,7 @@ class DocBuilder():
         self.page_url: Optional[str] = None
         self.title: Optional[str] = None
         self.contents: Optional[List[Tuple[str, str]]] = None
+        self.redirect = False
 
         # refer to reference table to get actual doc_ids
         self.images: Optional[Dict[str, ImageData]] = None
@@ -29,6 +31,8 @@ class DocBuilder():
         doc.title = entry.title
 
         parsed = DocBuilder.parse_content(entry.content)
+        if parsed[0].redirect:
+            doc.redirect = True
 
         # TODO: add heuristics which would not pass technical contents
         doc.contents = [
@@ -68,7 +72,15 @@ class DocBuilder():
         return references, categories
 
     def as_dict(self):
+        if self.redirect:
+            if not self.references:
+                raise ValueError('Redirect page has no references')
+            return {
+                'redirect': True,
+                'redirect_to': self.references[0]
+            }
         return {
+            'redirect': False,
             'doc_id': self.doc_id,
             'page_url': self.page_url,
             'title': self.title,
