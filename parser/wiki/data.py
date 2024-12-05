@@ -31,49 +31,49 @@ class ContentData:
         ]] = list()
 
         for node in nodes:
-            if isinstance(node, (
-                mwparserfromhell.nodes.Template,
-                mwparserfromhell.nodes.Heading,
-                mwparserfromhell.nodes.Comment,
-            )):
-                continue
+            match type(node):
+                case (
+                    mwparserfromhell.nodes.Template |
+                    mwparserfromhell.nodes.Heading |
+                    mwparserfromhell.nodes.Comment
+                ):
+                    pass
 
-            if isinstance(node, mwparserfromhell.nodes.Tag):
-                if str(node).startswith('\'\'\'') and node.endswith('\'\'\''):
-                    filtered.append(node.contents)
-                continue
-
-            if isinstance(node, mwparserfromhell.nodes.Wikilink):
-                if node.title.startswith('File:'):
-                    image_title = str(node.title).replace('File:', '')
-
-                    # TODO: download image and calculate crc64
-                    self.images.append(ImageData(
-                        image_title,
-                        "",
-                        ""
-                    ))
+                case mwparserfromhell.nodes.Tag:
+                    if str(node).startswith('\'\'\'') and node.endswith('\'\'\''):
+                        filtered.append(node.contents)
                     continue
 
-                if node.title.startswith('Category:'):
-                    category_title = str(node.title).replace('Category:', '')
-                    self.categories.append(category_title)
-                    continue
+                case mwparserfromhell.nodes.Wikilink:
+                    if node.title.startswith('File:'):
+                        image_title = str(node.title).replace('File:', '')
 
-                if node.text is not None:
-                    filtered.append(node.text)
-                else:
-                    filtered.append(node.title)
-                
-                self.links.append(str(node.title))
-                continue
+                        # TODO: download image and calculate crc64
+                        self.images.append(ImageData(
+                            image_title,
+                            "",
+                            ""
+                        ))
 
-            if isinstance(node, mwparserfromhell.nodes.text.Text):
-                if any(x.isalpha() for x in str(node)):
-                    self.has_text = True
+                    elif node.title.startswith('Category:'):
+                        category_title = str(node.title).replace('Category:', '')
+                        self.categories.append(category_title)
 
-            filtered.append(node)
-        
+                    else:
+                        if node.text is not None:
+                            filtered.append(node.text)
+                        else:
+                            filtered.append(node.title)
+
+                        self.links.append(str(node.title))
+
+                case _:
+                    if isinstance(node, mwparserfromhell.nodes.text.Text):
+                        if any(x.isalpha() for x in str(node)):
+                            self.has_text = True
+
+                    filtered.append(node)
+
         result = "".join(map(str, filtered)).strip()
 
         if result.startswith('REDIRECT'):
