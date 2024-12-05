@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-# import hashlib
 from typing import List, Union
 
+from crc64iso.crc64iso import crc64
 import mwparserfromhell
 
 
@@ -48,11 +48,11 @@ class ContentData:
                     if node.title.startswith('File:'):
                         image_title = str(node.title).replace('File:', '')
 
-                        # TODO: download image and calculate crc64
+                        # TODO: download image and calculate crc64 from it instead of the title
                         self.images.append(ImageData(
                             image_title,
                             "",
-                            ""
+                            crc64(image_title)
                         ))
 
                     elif node.title.startswith('Category:'):
