@@ -79,7 +79,7 @@ class DocBuilder():
                     for par_id, text in self.contents
                 ]
                 if self.contents is not None
-                else None,
+                else None
             ),
             'images': (
                 [
