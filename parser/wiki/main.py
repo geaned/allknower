@@ -42,8 +42,8 @@ class DocBuilder():
             )
         ]
 
-        doc.references = [link for par in parsed for link in par.get_links()]
-        doc.categories = [link for par in parsed for link in par.get_categories()]
+        doc.references = sorted(list(set([link for par in parsed for link in par.get_links()])))
+        doc.categories = sorted(list(set([link for par in parsed for link in par.get_categories()])))
 
         if with_images:
             doc.images = {

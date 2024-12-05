@@ -88,7 +88,7 @@ class ContentData:
         return self.links
 
     def get_categories(self):
-        return self.links
+        return self.categories
 
     def get_images(self):
         return self.images
