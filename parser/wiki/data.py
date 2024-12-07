@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Optional, Tuple, Union
 import regex
-import urllib
+import urllib.parse
 
 from crc64iso.crc64iso import crc64
 import mwparserfromhell
