@@ -6,7 +6,7 @@ from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
 
 from data import ContentData, ImageData
-from utils import make_par_id, make_mediawiki_stream, parse_args
+from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
 
 
 class DocBuilder():
@@ -23,7 +23,7 @@ class DocBuilder():
         self.categories: Optional[List[str]] = None
 
     @classmethod
-    def from_entry(cls, entry: DumpEntry, with_images: bool = True):
+    def from_entry(cls, entry: DumpEntry, with_images: bool = True, only_common_images: bool = False):
         doc = DocBuilder()
         doc.doc_id = entry.page_id
         doc.page_url = entry.url
@@ -49,6 +49,8 @@ class DocBuilder():
             doc.images = {
                 image.crc64: image
                 for par in parsed for image in par.get_images()
+                if (not only_common_images) or check_extension(image.title, ['.jpeg', '.jpg', '.png'])
+                # preserves about 90 percent of all images
             }
 
         return doc
@@ -87,6 +89,7 @@ class DocBuilder():
                         'image': image.data,
                         'metadata': {
                             'title': image.title,
+                            'description': image.desc,
                         },
                         'crc64': crc64,
                     }
@@ -100,8 +103,8 @@ class DocBuilder():
         }
 
 
-def parse_entry(entry: DumpEntry, with_images: bool, output_file: Optional[str] = None):
-    doc = DocBuilder.from_entry(entry, with_images)
+def parse_entry(entry: DumpEntry, with_images: bool, only_common_imgs: bool, output_file: Optional[str] = None):
+    doc = DocBuilder.from_entry(entry, with_images, only_common_imgs)
 
     if output_file is None:
         output_file = f'page_{doc.doc_id}.json'
@@ -117,6 +120,7 @@ def main(args):
     output_file: str = args.output
     with_images: bool = not args.no_images
     num_workers: int = args.num_workers
+    only_common_imgs: int = not args.all_img_types
 
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
@@ -124,14 +128,14 @@ def main(args):
     if mode == "stream":
         with Pool(processes=num_workers) as pool:
             for entry in reader.read(dump):
-                pool.apply(parse_entry, (entry, with_images))
+                pool.apply(parse_entry, (entry, with_images, only_common_imgs))
     
     if mode == "single":
         for entry in reader.read(dump):
             if entry.title == title:
                 break
 
-        parse_entry(entry, with_images, output_file)
+        parse_entry(entry, with_images, only_common_imgs, output_file)
 
 
 if __name__ == '__main__':
