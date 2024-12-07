@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
+import pycurl
 
 from data import ContentData, ImageData
 from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
@@ -45,13 +46,17 @@ class DocBuilder():
         doc.references = sorted(list(set([link for par in parsed for link in par.get_links()])))
         doc.categories = sorted(list(set([link for par in parsed for link in par.get_categories()])))
 
+        client = None
         if with_images:
-            doc.images = {
-                image.crc64: image
-                for par in parsed for image in par.get_images()
-                if (not only_common_images) or check_extension(image.title, ['.jpeg', '.jpg', '.png'])
-                # preserves about 90 percent of all images
-            }
+            client = pycurl.Curl()
+            client.setopt(pycurl.FOLLOWLOCATION, True)
+
+        doc.images = {
+            image.crc64: image
+            for par in parsed for image in par.get_images(client)
+            if (not only_common_images) or check_extension(image.title, ['.jpeg', '.jpg', '.png'])
+            # preserves about 90 percent of all images
+        }
 
         return doc
 
@@ -118,7 +123,7 @@ def main(args):
     mode: str = args.mode
     title: str = args.title
     output_file: str = args.output
-    with_images: bool = not args.no_images
+    with_images: bool = not args.mock_images
     num_workers: int = args.num_workers
     only_common_imgs: int = not args.all_img_types
 

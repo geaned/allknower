@@ -1,9 +1,12 @@
+import base64
 from dataclasses import dataclass
-from typing import List, Union
+from io import BytesIO
+from typing import List, Optional, Tuple, Union
 import regex
 
 from crc64iso.crc64iso import crc64
 import mwparserfromhell
+import pycurl
 
 from utils import check_extension, parse_as_of_template
 
@@ -26,7 +29,8 @@ class ContentData:
 
         self.links: List[str] = list()
         self.categories: List[str] = list()
-        self.images: List[ImageData] = list()
+        # self.images: List[ImageData] = list()
+        self.images: List[Tuple[str, str]] = list()
         self.text = self.__parse(s)
 
     def __parse(self, s: str):
@@ -71,12 +75,7 @@ class ContentData:
                         description = self.__parse_reduced(node.text.nodes)
 
                         # TODO: download image and calculate crc64 from it instead of the title
-                        self.images.append(ImageData(
-                            image_title,
-                            "",
-                            crc64(image_title),
-                            description
-                        ))
+                        self.images.append((image_title, description))
 
                     elif node.title.startswith('Category:'):
                         category_title = str(node.title).replace('Category:', '')
@@ -137,5 +136,36 @@ class ContentData:
     def get_categories(self):
         return self.categories
 
-    def get_images(self):
-        return self.images
+    def get_images(self, client: Optional[pycurl.Curl]) -> List[ImageData]:
+        image_data: List[ImageData] = list()
+
+        if client is None:
+            # return mocked images
+            for title, description in self.images:
+                image_data.append(ImageData(
+                    title,
+                    "",
+                    crc64(title),
+                    description
+                ))
+    
+            return image_data
+
+        for title, description in self.images:
+            buffer = BytesIO()
+            url = f'''http://commons.wikimedia.org/wiki/Special:FilePath/{title.replace(' ', '_')}'''
+
+            client.setopt(pycurl.URL, url)
+            client.setopt(pycurl.WRITEDATA, buffer)
+            client.perform()
+
+            data = base64.b64encode(buffer.getvalue()).decode()
+
+            image_data.append(ImageData(
+                title,
+                data,
+                crc64(data),
+                description
+            ))
+
+        return image_data
