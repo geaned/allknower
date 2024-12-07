@@ -157,3 +157,4 @@ cython_debug/
 # Other
 .vscode
 *.xml.bz2
+.DS_Store
