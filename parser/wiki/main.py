@@ -2,6 +2,7 @@ import json
 from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple
 
+import certifi
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
 import pycurl
@@ -50,6 +51,7 @@ class DocBuilder():
         if with_images:
             client = pycurl.Curl()
             client.setopt(pycurl.FOLLOWLOCATION, True)
+            client.setopt(pycurl.CAINFO, certifi.where())
 
         doc.images = {
             image.crc64: image

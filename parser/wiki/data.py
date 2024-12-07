@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Optional, Tuple, Union
 import regex
+import urllib
 
 from crc64iso.crc64iso import crc64
 import mwparserfromhell
@@ -29,7 +30,6 @@ class ContentData:
 
         self.links: List[str] = list()
         self.categories: List[str] = list()
-        # self.images: List[ImageData] = list()
         self.images: List[Tuple[str, str]] = list()
         self.text = self.__parse(s)
 
@@ -122,9 +122,6 @@ class ContentData:
                 case mwparserfromhell.nodes.Text:
                     filtered.append(node)
 
-        # for node in filtered:
-        #     print(type(node))
-        #     print(node)
         return "".join(map(str, filtered)).strip().split('|')[-1]
 
     def __str__(self):
@@ -153,7 +150,8 @@ class ContentData:
 
         for title, description in self.images:
             buffer = BytesIO()
-            url = f'''http://commons.wikimedia.org/wiki/Special:FilePath/{title.replace(' ', '_')}'''
+            file_name = urllib.parse.quote(title.replace(' ', '_'), safe='/', encoding=None, errors=None)
+            url = f'''http://commons.wikimedia.org/wiki/Special:FilePath/{file_name}'''
 
             client.setopt(pycurl.URL, url)
             client.setopt(pycurl.WRITEDATA, buffer)
