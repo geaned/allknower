@@ -1,0 +1,108 @@
+[tool.mypy]
+python_version = "3.12"
+explicit_package_bases = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+exclude = [
+    "^test.*\\.py$"
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint.isort]
+known-local-folder = ["src"]
+split-on-trailing-comma = false
+
+[tool.ruff.format]
+quote-style = "double"
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+select = [
+    "I",
+    "F",
+    "B",
+    "Q",
+    "N",
+    "A",
+    "Q",
+    "RSE",
+    "COM",
+    "ASYNC",
+    "SIM",
+    "SLF",
+    "BLE",
+    "FBT",
+    "ARG",
+    "ERA",
+    "LOG",
+    "PL",
+    "E4",
+    "E5",
+    "E7",
+    "E9",
+    "C4",
+    "S5",
+    "T20",
+    "PIE8",
+    "W291",
+    "W292",
+    "W605",
+    "E101",
+    "UP008",
+    "UP009",
+    "UP012",
+    "UP013",
+    "UP014",
+    "UP027",
+    "UP032",
+    "UP034",
+    "UP039",
+    "S102",
+    "S110",
+    "S112",
+    "S113",
+    "S302",
+    "S303",
+    "S304",
+    "S305",
+    "S306",
+    "S307",
+    "S324",
+    "S608",
+    "S612",
+    "ICN001",
+    "PIE794",
+    "PIE796",
+    "RET501",
+    "RET504",
+    "RET505",
+    "RET506",
+    "RET507",
+    "RET508",
+    "TD001",
+    "TD002",
+    "TD006",
+    "TD007",
+    "PGH003",
+    "PGH004",
+    "RUF001",
+    "RUF003",
+    "RUF200",
+    "RUF100",
+    "RUF019",
+    "RUF018",
+    "RUF013",
+    "RUF008",
+]
+ignore = [
+    "COM812",
+    "TD002",
+    "PGH003",
+    "RET504",
+]
