@@ -13,20 +13,13 @@ import pycurl
 from utils import check_extension, parse_as_of_template
 
 
-def parse_image_binary(raw_image: bytes, ext: str, max_image_size: int = 0) -> bytes:
-    ext_to_fmt = {
-        'PNG': 'PNG',
-        'JPG': 'JPEG',
-        'JPEG': 'JPEG'
-    }
-
+def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
     if max_image_size <= 0:
         return raw_image
 
     image = Image.open(BytesIO(raw_image))
     w, h = image.size
 
-    print(max_image_size, w, h)
     if max_image_size >= w and max_image_size >= h:
         return raw_image
 
@@ -37,7 +30,7 @@ def parse_image_binary(raw_image: bytes, ext: str, max_image_size: int = 0) -> b
     image.resize(
         (new_w, new_h),
         resample=Image.Resampling.LANCZOS
-    ).save(resized_raw_image, format=ext_to_fmt[ext])
+    ).save(resized_raw_image, format=fmt)
 
     return resized_raw_image.getvalue()
 
@@ -51,7 +44,7 @@ class ImageData:
 
 
 class ContentData:
-    image_exts = ['.jpeg', '.jpg', '.jpe', '.jps', '.png', '.apng', '.gif', '.webp', '.tiff', '.tif', '.xcf']
+    wiki_image_exts = ['.jpeg', '.jpg', '.jpe', '.jps', '.png', '.apng', '.gif', '.webp', '.tiff', '.tif', '.xcf']
 
     def __init__(self, idx: int, s: str):
         self.id = idx
@@ -99,7 +92,7 @@ class ContentData:
                     if node.title.startswith('File:'):
                         image_title = str(node.title).replace('File:', '')
                         
-                        if not check_extension(node.title, ContentData.image_exts):
+                        if not check_extension(node.title, ContentData.wiki_image_exts):
                             continue
 
                         description = self.__parse_reduced(node.text.nodes)
@@ -190,7 +183,8 @@ class ContentData:
             client.setopt(pycurl.WRITEDATA, buffer)
             client.perform()
 
-            parsed_image = parse_image_binary(buffer.getvalue(), title.split('.')[-1].upper(), max_image_size)
+            image_format = Image.registered_extensions()[title[title.rfind('.'):]]
+            parsed_image = parse_image_binary(buffer.getvalue(), image_format, max_image_size)
             data = base64.b64encode(parsed_image).decode()
 
             image_data.append(ImageData(
