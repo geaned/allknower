@@ -7,9 +7,39 @@ import urllib.parse
 
 from crc64iso.crc64iso import crc64
 import mwparserfromhell
+from PIL import Image
 import pycurl
 
 from utils import check_extension, parse_as_of_template
+
+
+def parse_image_binary(raw_image: bytes, ext: str, max_image_size: int = 0) -> bytes:
+    ext_to_fmt = {
+        'PNG': 'PNG',
+        'JPG': 'JPEG',
+        'JPEG': 'JPEG'
+    }
+
+    if max_image_size <= 0:
+        return raw_image
+
+    image = Image.open(BytesIO(raw_image))
+    w, h = image.size
+
+    print(max_image_size, w, h)
+    if max_image_size >= w and max_image_size >= h:
+        return raw_image
+
+    reduction_ratio = min(w / max_image_size, h / max_image_size)
+    new_w, new_h = int(w / reduction_ratio), int(h / reduction_ratio)
+
+    resized_raw_image = BytesIO()
+    image.resize(
+        (new_w, new_h),
+        resample=Image.Resampling.LANCZOS
+    ).save(resized_raw_image, format=ext_to_fmt[ext])
+
+    return resized_raw_image.getvalue()
 
 
 @dataclass
@@ -133,8 +163,11 @@ class ContentData:
     def get_categories(self):
         return self.categories
 
-    def get_images(self, client: Optional[pycurl.Curl]) -> List[ImageData]:
+    def get_images(self, client: Optional[pycurl.Curl], max_image_size: int = 0) -> List[ImageData]:
         image_data: List[ImageData] = list()
+
+        if max_image_size < 0:
+            raise ValueError("Cannot reduce image dimensions to a negative values")
 
         if client is None:
             # return mocked images
@@ -157,7 +190,8 @@ class ContentData:
             client.setopt(pycurl.WRITEDATA, buffer)
             client.perform()
 
-            data = base64.b64encode(buffer.getvalue()).decode()
+            parsed_image = parse_image_binary(buffer.getvalue(), title.split('.')[-1].upper(), max_image_size)
+            data = base64.b64encode(parsed_image).decode()
 
             image_data.append(ImageData(
                 title,

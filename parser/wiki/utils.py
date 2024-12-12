@@ -50,6 +50,11 @@ def parse_args() -> argparse.Namespace:
         help="Add uncommon image types (which may be hard to parse on later stages), "
         "by default .jpeg, .jpg and .png files are added to the result"
     )
+    parser.add_argument(
+        "--max-img-dim", type=int, default=640,
+        help="Enables image size reduction down to the largest dimension,"
+        "being of the same size as the passed value (0 for no reduction)"
+    )
 
     return parser.parse_args()
 
