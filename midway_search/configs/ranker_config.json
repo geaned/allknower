@@ -1,0 +1,9 @@
+{
+    "catboost_ranker_path": "./data/catboost_stub",
+    "tokenizer_config": {
+        "tokenizer_path": "./data/",
+        "lower": true,
+        "stopwords": "english"
+    },
+    "processes_num": 10
+}
