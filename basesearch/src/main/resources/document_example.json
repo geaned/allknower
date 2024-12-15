@@ -1,0 +1,29 @@
+[
+  {
+    "doc_id": "1",
+    "page_url": "https://ru.wikipedia.org/wiki/Книга",
+    "title": "Книга",
+    "contents": [
+      {
+        "content_id": "1",
+        "content": "Книга — письменное произведение, представляющее собой совокупнос"
+      }
+    ],
+    "images": [
+      {
+        "crc64": "123456",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Book_icon_Noun_Project_17688.svg",
+        "metadata": {
+          "title": "Книга"
+        }
+      }
+    ],
+    "references": [
+      "https://ru.wikipedia.org/wiki/Книга"
+    ],
+    "categories": [
+      "Книги"
+    ],
+    "redirect": false
+  }
+]
