@@ -1,19 +1,26 @@
 import base64
+from crc64iso.crc64iso import crc64
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Optional, Tuple, Union
-import regex
-import urllib.parse
-
-from crc64iso.crc64iso import crc64
 import mwparserfromhell
 from PIL import Image
-import pycurl
+from typing import List, Tuple, Union
+import regex
+import requests
+import time
+import urllib.parse
 
 from utils import check_extension, parse_as_of_template
 
 
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+}
+
+
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
+    start_time = time.time()
     if max_image_size <= 0:
         return raw_image
 
@@ -156,36 +163,36 @@ class ContentData:
     def get_categories(self):
         return self.categories
 
-    def get_images(self, client: Optional[pycurl.Curl], max_image_size: int = 0) -> List[ImageData]:
-        image_data: List[ImageData] = list()
-
+    def get_images(self, with_images: bool = True, max_image_size: int = 0) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError("Cannot reduce image dimensions to a negative values")
 
-        if client is None:
+        image_data: List[ImageData] = list()
+
+        if not with_images:
             # return mocked images
             for title, description in self.images:
-                image_data.append(ImageData(
-                    title,
-                    "",
-                    crc64(title),
-                    description
-                ))
+                image_data.append(self.__make_mock_image(title, description))
     
             return image_data
 
         for title, description in self.images:
-            buffer = BytesIO()
             file_name = urllib.parse.quote(title.replace(' ', '_'), safe='/', encoding=None, errors=None)
             url = f'''http://commons.wikimedia.org/wiki/Special:FilePath/{file_name}'''
 
-            client.setopt(pycurl.URL, url)
-            client.setopt(pycurl.WRITEDATA, buffer)
-            client.perform()
+            try:
+                buffer = requests.get(url, headers=HEADERS).content
+            except Exception as e:
+                print(f'Error while downloading image {file_name}:', e)
+                continue
 
-            image_format = Image.registered_extensions()[title[title.rfind('.'):]]
-            parsed_image = parse_image_binary(buffer.getvalue(), image_format, max_image_size)
-            data = base64.b64encode(parsed_image).decode()
+            try:
+                image_format = Image.registered_extensions()[title[title.rfind('.'):]]
+                parsed_image = parse_image_binary(buffer, image_format, max_image_size)
+                data = base64.b64encode(parsed_image).decode()
+            except Exception as e:
+                print(f'Error while parsing image {file_name}:', e)
+                continue
 
             image_data.append(ImageData(
                 title,
@@ -195,3 +202,12 @@ class ContentData:
             ))
 
         return image_data
+
+    @staticmethod
+    def __make_mock_image(title: str, description: str) -> ImageData:
+        return ImageData(
+            title,
+            "",
+            crc64(title),
+            description
+        )

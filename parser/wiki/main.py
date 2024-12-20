@@ -1,14 +1,13 @@
 import json
-from multiprocessing import Pool
-from typing import Dict, List, Optional, Tuple
-
-import certifi
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
-import pycurl
+from multiprocessing import Manager, Pool, Process, Queue
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from data import ContentData, ImageData
 from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
+from writer import write_messages_file, write_messages_kafka
 
 
 class DocBuilder():
@@ -53,15 +52,9 @@ class DocBuilder():
         doc.references = sorted(list(set([link for par in parsed for link in par.get_links()])))
         doc.categories = sorted(list(set([link for par in parsed for link in par.get_categories()])))
 
-        client = None
-        if with_images:
-            client = pycurl.Curl()
-            client.setopt(pycurl.FOLLOWLOCATION, True)
-            client.setopt(pycurl.CAINFO, certifi.where())
-
         doc.images = {
             image.crc64: image
-            for par in parsed for image in par.get_images(client, max_image_size)
+            for par in parsed for image in par.get_images(with_images, max_image_size)
             if (not only_common_images) or check_extension(image.title, ['.jpeg', '.jpg', '.png'])
             # preserves about 90 percent of all images
         }
@@ -118,47 +111,98 @@ class DocBuilder():
 
 def parse_entry(
     entry: DumpEntry,
-    with_images: bool,
-    only_common_imgs: bool, 
-    output_file: Optional[str] = None,
+    queue: Optional[Queue],
+    with_images: bool = True,
+    only_common_imgs: bool = True,
     max_image_size: int = 0,
+    output_dir: Optional[str] = None,
+    output_file: Optional[str] = None,
 ):
     doc = DocBuilder.from_entry(entry, with_images, only_common_imgs, max_image_size)
 
     if output_file is None:
         output_file = f'page_{doc.doc_id}.json'
 
-    with open(output_file, 'w') as result:
-        json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
+    if queue is None:
+        with open(output_file, 'w') as result:
+            json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
+        return
+    
+    if output_dir is None:
+        raise ValueError("Output directory is required in stream mode")
+
+    queue.put((
+        Path(output_dir, output_file),
+        json.dumps(doc.as_dict(), ensure_ascii=False, indent=4)
+    ))
+
+
+def write_from_queue(q: Queue):
+    while True:
+        dump, file_name = q.get()
+        with open(file_name, 'w') as result:
+            result.write(dump)
 
 
 def main(args):
     file_name: str = args.file
     mode: str = args.mode
     title: str = args.title
-    output_file: str = args.output
+    output_dir: str = args.output_dir
+    output_file: str = args.output_file
+    output_mode: str = args.output_mode
     with_images: bool = not args.mock_images
     num_workers: int = args.num_workers
     only_common_imgs: int = not args.all_img_types
     max_image_size: int = args.max_img_dim
+    config_path: str = args.kafka_config
 
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
 
-    if mode == "stream":
-        with Pool(processes=num_workers) as pool:
+    match mode:
+        case "stream":
+            m = Manager()
+            parsed_queue = m.Queue(maxsize=1)
+
+            match output_mode:
+                case "file":
+                    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+                    Process(target=write_messages_file, args=(parsed_queue,)).start()
+
+                case "kafka":
+                    config = json.load(open(config_path))
+                    Process(target=write_messages_kafka, args=(parsed_queue, config)).start()
+
+                case _:
+                    raise ValueError(f"Unsupported output mode {{{output_mode}}} passed")
+
+
+            with Pool(processes=num_workers) as pool:
+                for entry in reader.read(dump):
+                    # for testing purposes
+                    if entry.page_id > 50:
+                        break
+                    pool.apply(parse_entry, (entry, parsed_queue, with_images, only_common_imgs, max_image_size, output_dir, None))
+        
+        case "single":
+            if output_mode == "kafka":
+                print("Only {{file}} output mode available in {{single}} mode")
+
+            # TODO: use writer
+
+            if title is None:
+                raise ValueError("Title is required in single mode")
+
             for entry in reader.read(dump):
-                pool.apply(parse_entry, (entry, with_images, only_common_imgs, max_image_size))
-    
-    if mode == "single":
-        if title is None:
-            raise ValueError("Title is required in single mode")
+                if entry.title == title:
+                    break
 
-        for entry in reader.read(dump):
-            if entry.title == title:
-                break
-
-        parse_entry(entry, with_images, only_common_imgs, output_file, max_image_size)
+            parse_entry(entry, None, with_images, only_common_imgs, max_image_size, None, output_file)
+        
+        case _:
+            raise ValueError(f"Unsupported mode {{{mode}}} passed")
 
 
 if __name__ == '__main__':

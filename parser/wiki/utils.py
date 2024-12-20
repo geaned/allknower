@@ -10,7 +10,7 @@ def make_par_id(doc_id: int, par_id: int) -> str:
     return f'{doc_id}-{par_id}'
 
 
-def make_mediawiki_stream(file_name: str):
+def make_mediawiki_stream(file_name: str) -> IteratorDump:
     def get_content(file_name: str):
         with bz2.open(file_name, mode="r") as fp:
             yield from fp
@@ -22,12 +22,25 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--file", type=str, default="enwiki-20241101-pages-articles-multistream.xml.bz2",
+        "--file", type=str, default="./enwiki-20241101-pages-articles-multistream.xml.bz2",
         help="Path to the MediaWiki dump file"
     )
     parser.add_argument(
         "--mode", type=str, default="stream",
-        help="Parse the whole {{stream}} or a {{single}} document"
+        help="Parse the whole {stream} or a {single} document"
+    )
+    parser.add_argument(
+        "--output-dir", type=str, default="./parsed",
+        help="Directory to store parsed documents (used in stream mode)"
+    )
+    parser.add_argument(
+        "--output-file", type=str, default="result.json",
+        help="Path to output file (used in single mode)"
+    )
+    parser.add_argument(
+        "--output-mode", type=str, default="file",
+        help="Write to a {file} or {kafka} event store (the latter does not use other "
+        "output settings)"
     )
     parser.add_argument(
         "--title", type=str,
@@ -38,12 +51,9 @@ def parse_args() -> argparse.Namespace:
         help="Write placeholders instead of actual images (substantally increases performance)"
     )
     parser.add_argument(
-        "--output", type=str, default="result.json",
-        help="Path to output file (used in single mode)"
-    )
-    parser.add_argument(
         "--num-workers", type=int, default=1,
-        help="Amount of workers used for dump processing (used in stream mode)"
+        help="Amount of workers used for dump processing (used in stream mode), setting a high "
+        "value might cause difficulties with image downloading process"
     )
     parser.add_argument(
         "--all-img-types", action="store_true",
@@ -54,6 +64,10 @@ def parse_args() -> argparse.Namespace:
         "--max-img-dim", type=int, default=640,
         help="Enables image size reduction down to the largest dimension,"
         "being of the same size as the passed value (0 for no reduction)"
+    )
+    parser.add_argument(
+        "--kafka-config", type=str, default="./config/kafka.json",
+        help="Path to {kafka} config"
     )
 
     return parser.parse_args()
@@ -68,15 +82,15 @@ def parse_as_of_template(params: List[mwparserfromhell.nodes.extras.Parameter]) 
     day: Optional[str] = None
 
     month_to_name = {
-        '01': 'January',
-        '02': 'February',
-        '03': 'March',
-        '04': 'April',
-        '05': 'May',
-        '06': 'June',
-        '07': 'July',
-        '08': 'August',
-        '09': 'September',
+        '1': 'January',
+        '2': 'February',
+        '3': 'March',
+        '4': 'April',
+        '5': 'May',
+        '6': 'June',
+        '7': 'July',
+        '8': 'August',
+        '9': 'September',
         '10': 'October',
         '11': 'November',
         '12': 'December',
@@ -101,7 +115,9 @@ def parse_as_of_template(params: List[mwparserfromhell.nodes.extras.Parameter]) 
                 if year is None:
                     year = " " + str(val)
                 elif month is None:
-                    month = " " + month_to_name[str(val)]
+                    month_key = str(val).lstrip('0')
+                    parsed_month = month_to_name.get(month_key, month_key)
+                    month = " " + parsed_month
                 elif day is None:
                     day = " " + str(val)
 
