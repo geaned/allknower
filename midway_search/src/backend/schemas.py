@@ -36,6 +36,7 @@ class MidwaySearchDocument(BaseModel):
     categories: list[str]
     redirect: bool
 
+
 class MidwaySearchRequest(BaseModel):
     query: str
     top_n: int = 10

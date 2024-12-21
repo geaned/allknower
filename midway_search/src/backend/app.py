@@ -59,12 +59,15 @@ def rerank_documents(request: MidwaySearchRequest) -> list[MidwaySearchDocument]
             response = requests.post(
                 os.environ["MIDWAY_SEARCH_BACKEND__BASESEARCH_ENDPOINT"],
                 json=request.model_dump(mode="json"),
+                timeout=20,
             )
             response.raise_for_status()
             docs = response.json()
 
             if len(docs) == 0:
-                logger.bind(query=request.query).error("No documents found by given query")
+                logger.bind(query=request.query).error(
+                    "No documents found by given query"
+                )
                 raise NoDocumentsFoundError(
                     f"No documents found by given query {request.query}"
                 )
@@ -79,37 +82,41 @@ def rerank_documents(request: MidwaySearchRequest) -> list[MidwaySearchDocument]
         try:
             logger.info("Ranking documents")
             docs_ranked = ranker.rank(
-                list(map(lambda doc: BaseSearchDocument(**doc), docs)), top_n=request.top_n,
+                [BaseSearchDocument(**doc) for doc in docs], top_n=request.top_n
             )
         except Exception as error:
             logger.bind(error=error).error("Error occurred during ranking")
             raise RankingError("Error occurred during ranking") from error
 
-        logger.bind(docs_samples=[doc.contents[0].content[:50] for doc in docs_ranked]).info(
-            "Successfully documents ranked"
-        )
+        logger.bind(
+            docs_samples=[doc.contents[0].content[:50] for doc in docs_ranked]
+        ).info("Successfully documents ranked")
 
         return docs_ranked
 
 
 @app.exception_handler(requests.RequestException)
-def service_errors_handler(_request: Request, exc: requests.RequestException) -> JSONResponse:
+def requests_exception_handler(
+    _request: Request, exc: requests.RequestException
+) -> JSONResponse:
     return JSONResponse(
-        content={"detail": str(exc)}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": str(exc)}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE
     )
 
 
 @app.exception_handler(NoDocumentsFoundError)
-def service_errors_handler(_request: Request, exc: NoDocumentsFoundError) -> JSONResponse:
-    return JSONResponse(
-        content={"detail": exc.detail}, status_code=exc.status_code,
-    )
+def no_documents_found_errors_handler(
+    _request: Request, exc: NoDocumentsFoundError
+) -> JSONResponse:
+    return JSONResponse(content={"detail": exc.detail}, status_code=exc.status_code)
 
 
 @app.exception_handler(Exception)
 def exception_handler(_request: Request, exc: Exception) -> JSONResponse:
     logger.bind(error=exc).error("An unknown error occurred while ranking documents")
-    error_count.labels(os.environ["MIDWAY_SEARCH_BACKEND__PROMETHEUS__APP_NAME"], "/rank").inc()
+    error_count.labels(
+        os.environ["MIDWAY_SEARCH_BACKEND__PROMETHEUS__APP_NAME"], "/rank"
+    ).inc()
     return JSONResponse(
         content={"detail": str(exc), "type": type(exc).__name__},
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

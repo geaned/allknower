@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
 
-
 __all__ = ("setup_logging", "get_logger")
 
 
