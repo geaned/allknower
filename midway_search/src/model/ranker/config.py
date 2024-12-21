@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -8,17 +7,10 @@ from pydantic_settings import (
 )
 
 
-class TokenizerConfig(BaseModel):
-    tokenizer_path: str
-    lower: bool = True
-    stopwords: str = "english"
-
-
 class RankerConfig(BaseSettings):
     model_config = SettingsConfigDict(env_nested_delimiter="__")
 
     catboost_ranker_path: str
-    tokenizer_config: TokenizerConfig
     processes_num: int = 10
 
     @classmethod

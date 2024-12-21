@@ -21,7 +21,7 @@ def _default_formatter(*args: Any, **kwargs: Any) -> str:  # noqa: ARG001
     return "{message}"
 
 
-def setup_logging(  # noqa: PLR0913
+def setup_logging(
     logger_name: Optional[str] = None,
     log_level: Union[int, str] = logging.INFO,
     extra_handlers: Optional[List[SinkType]] = None,

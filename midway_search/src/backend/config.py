@@ -5,16 +5,23 @@ from pydantic_settings import (
 )
 
 
+class PrometheusMetricsConfig(BaseSettings):
+    host: str = "0.0.0.0"
+    port: int = 8090
+    app_name: str = "midway_search"
+
+
 class MidwaySearchBackendConfig(BaseSettings):
+    app_host: str = "0.0.0.0"
+    app_port: int = 7866
+    prometheus: PrometheusMetricsConfig
+    basesearch_endpoint: str = "http://0.0.0.0:7867/get_documents"
+
     model_config = SettingsConfigDict(
         env_prefix="MIDWAY_SEARCH_BACKEND__",
         env_ignore_empty=True,
         env_nested_delimiter="__",
     )
-
-    app_host: str = "0.0.0.0"
-    app_port: int = 7866
-    basesearch_endpoint: str = "http://0.0.0.0:7867/get_documents"
 
     @classmethod
     def settings_customise_sources(

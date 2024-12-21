@@ -1,18 +1,40 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 
+class ContentItem(BaseModel):
+    content_id: str
+    content: str
+
+
+class Image(BaseModel):
+    crc64: str
+    image: str
+    metadata: dict[str, Any]
+
+
 class BaseSearchDocument(BaseModel):
-    text: str
-    bm25_score: float
-    proximity_score: float = 0
-    additional_features: dict | None = (
-        None  # Placeholder for additional features, unused for now
-    )
+    doc_id: str
+    page_url: str
+    title: str
+    contents: list[ContentItem]
+    images: list[Image]
+    references: list[str]
+    categories: list[str]
+    redirect: bool
+    features: list[int | float]
 
 
 class MidwaySearchDocument(BaseModel):
-    text: str
-
+    doc_id: str
+    page_url: str
+    title: str
+    contents: list[ContentItem]
+    images: list[Image]
+    references: list[str]
+    categories: list[str]
+    redirect: bool
 
 class MidwaySearchRequest(BaseModel):
     query: str

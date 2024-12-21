@@ -3,7 +3,6 @@ import json
 import logging
 from typing import Any, Optional
 
-
 from common.log.serializers import LogSerializer
 
 
