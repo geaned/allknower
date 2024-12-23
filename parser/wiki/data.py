@@ -19,7 +19,6 @@ HEADERS = {
     '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 }
 
-warnings.WarningMessage
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
     if max_image_size <= 0:
         return raw_image
