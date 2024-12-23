@@ -11,7 +11,7 @@ from typing import List, Tuple, Union
 import urllib.parse
 import warnings
 
-from utils import check_extension, parse_as_of_template
+from utils import check_extension, get_corrected_dimensions, parse_as_of_template
 
 
 HEADERS = {
@@ -33,11 +33,12 @@ def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> b
         logging.warning(w.message)
 
     w, h = image.size
-    if max_image_size >= w and max_image_size >= h:
+    if w + h <= 2 * max_image_size:
         return raw_image
 
-    reduction_ratio = min(w / max_image_size, h / max_image_size)
-    new_w, new_h = int(w / reduction_ratio), int(h / reduction_ratio)
+    new_w, new_h = get_corrected_dimensions(w, h, max_image_size)
+
+    logging.info(f'Resized image from {w}x{h} to {new_w}x{new_h}')
 
     resized_raw_image = BytesIO()
     image.resize(
@@ -110,7 +111,6 @@ class ContentData:
 
                         description = self.__parse_reduced(node.text.nodes)
 
-                        # TODO: download image and calculate crc64 from it instead of the title
                         self.images.append((image_title, description))
 
                     elif node.title.startswith('Category:'):
@@ -206,6 +206,8 @@ class ContentData:
                 crc64(data),
                 description
             ))
+
+            logging.info(f'Successfully parsed image {title}')
 
         return image_data
 

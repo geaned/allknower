@@ -29,7 +29,6 @@ def write_messages_kafka(queue: Queue, config: Dict[str, Any]):
     )
     admin_client.create_topics([topic])
 
-    # TODO: use with logging module
     @staticmethod
     def delivery_report(err, msg):
         if err is not None:

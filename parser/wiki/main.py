@@ -220,8 +220,6 @@ def main(args):
             if output_mode == 'kafka':
                 print('Only {{file}} output mode available in {{single}} mode')
 
-            # TODO: use writer
-
             if title is None:
                 raise ValueError('Title is required in single mode')
 

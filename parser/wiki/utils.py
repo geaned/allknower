@@ -1,6 +1,6 @@
 import argparse
 import bz2
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from mediawiki_dump.dumps import IteratorDump
 import mwparserfromhell
@@ -61,9 +61,9 @@ def parse_args() -> argparse.Namespace:
         'by default .jpeg, .jpg and .png files are added to the result'
     )
     parser.add_argument(
-        '--max-img-dim', type=int, default=640,
-        help='Enables image size reduction down to the largest dimension,'
-        'being of the same size as the passed value (0 for no reduction)'
+        '--max-img-dim', type=int, default=512,
+        help='Enables image size reduction down to the average of width and height'
+        'being less or equal to the passed value (0 for no reduction)'
     )
     parser.add_argument(
         '--kafka-config', type=str, default='./config/kafka.json',
@@ -136,3 +136,9 @@ def parse_as_of_template(params: List[mwparserfromhell.nodes.extras.Parameter]) 
 
 def check_extension(name: str, exts: List[str]) -> bool:
     return any(name.endswith(ext) for ext in exts)
+
+
+def get_corrected_dimensions(w: int, h: int, max_image_size: int) -> Tuple[int, int]:
+    reduction_ratio = (w + h) / (2 * max_image_size)
+    reduction_ratio_corr = min(w, h) / min(int(w / reduction_ratio), int(h / reduction_ratio))
+    return round(w / reduction_ratio_corr), round(h / reduction_ratio_corr)
