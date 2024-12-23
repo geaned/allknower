@@ -65,6 +65,10 @@ def parse_args() -> argparse.Namespace:
         'to the passed value (0 for no reduction)'
     )
     parser.add_argument(
+        '--use-clip', action='store_true',
+        help='Use a hardcoded endpoint to retrieve CLIP embeddings and return them instead of raw images'
+    )
+    parser.add_argument(
         '--kafka-config', type=str, default='./config/kafka.json',
         help='Path to kafka config'
     )

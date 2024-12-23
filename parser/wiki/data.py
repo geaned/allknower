@@ -2,21 +2,27 @@ import base64
 from crc64iso.crc64iso import crc64
 from dataclasses import dataclass
 from io import BytesIO
+import json
 import logging
 import mwparserfromhell
 from PIL import Image
 import regex
 import requests
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 import urllib.parse
 import warnings
 
 from utils import check_extension, get_corrected_dimensions, parse_as_of_template
 
 
-HEADERS = {
+DOWNLOAD_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+}
+
+CLIP_ENDPOINT = 'http://195.70.199.13:8765/embed/images/base64'
+CLIP_HEADERS = {
+    'Content-Type': 'application/json'
 }
 
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
@@ -52,7 +58,8 @@ def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> b
 @dataclass
 class ImageData:
     title: str
-    data: str   # base64 encoded
+    data: Optional[str]                 # base64 encoded
+    embedding: Optional[List[float]]    # CLIP embedding
     crc64: str
     desc: str
 
@@ -169,7 +176,7 @@ class ContentData:
     def get_categories(self):
         return self.categories
 
-    def get_images(self, with_images: bool = True, max_image_size: int = 0) -> List[ImageData]:
+    def get_images(self, with_images: bool = True, max_image_size: int = 0, use_clip: bool = True) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError('Cannot reduce image dimensions to a negative values')
 
@@ -187,7 +194,7 @@ class ContentData:
             url = f'''http://commons.wikimedia.org/wiki/Special:FilePath/{file_name}'''
 
             try:
-                buffer = requests.get(url, headers=HEADERS).content
+                buffer = requests.get(url, headers=DOWNLOAD_HEADERS).content
             except Exception as e:
                 logging.warning(f'While downloading image {title}:', e)
                 continue
@@ -200,14 +207,37 @@ class ContentData:
                 logging.warning(f'While parsing image {title}: {str(e)}')
                 continue
 
+
             image_data.append(ImageData(
                 title,
                 data,
+                None,
                 crc64(data),
                 description
             ))
 
             logging.info(f'Successfully parsed image {title}')
+
+        # batch CLIP inference
+        try:
+            if use_clip:
+                resp = requests.post(
+                    CLIP_ENDPOINT,
+                    headers=CLIP_HEADERS,
+                    json=[image.data for image in image_data]
+                ).content
+                embeddings = json.loads(resp)['embeddings']
+
+                if len(image_data) != len(embeddings):
+                    raise Exception(
+                        f'Encountered unequal amounts of images ({len(image_data)}) '
+                        f'and embeddings ({len(embeddings)})'
+                    )
+                for image, embedding in zip(image_data, embeddings):
+                    image.data = None
+                    image.embedding = embedding
+        except Exception as e:
+            logging.error(f'While applying CLIP: {str(e)}')
 
         return image_data
 
@@ -215,7 +245,8 @@ class ContentData:
     def __make_mock_image(title: str, description: str) -> ImageData:
         return ImageData(
             title,
-            '',
+            None,
+            None,
             crc64(title),
             description
         )

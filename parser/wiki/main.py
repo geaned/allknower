@@ -33,6 +33,7 @@ class DocBuilder():
         with_images: bool = True,
         only_common_images: bool = False,
         max_image_size: int = 0,
+        use_clip: bool = True
     ):
         doc = DocBuilder()
         doc.doc_id = entry.page_id
@@ -57,7 +58,7 @@ class DocBuilder():
 
         doc.images = {
             image.crc64: image
-            for par in parsed for image in par.get_images(with_images, max_image_size)
+            for par in parsed for image in par.get_images(with_images, max_image_size, use_clip)
             if (not only_common_images) or check_extension(image.title, ['.jpeg', '.jpg', '.png'])
             # preserves about 90 percent of all images
         }
@@ -118,6 +119,7 @@ def parse_entry(
     with_images: bool = True,
     only_common_imgs: bool = True,
     max_image_size: int = 0,
+    use_clip: bool = True,
     output_dir: Optional[str] = None,
     output_file: Optional[str] = None,
     log_dir: Optional[str] = None
@@ -136,7 +138,7 @@ def parse_entry(
     start_time = time.time()
     logging.info(f'Working on page {entry.page_id}: {entry.title}')
 
-    doc = DocBuilder.from_entry(entry, with_images, only_common_imgs, max_image_size)
+    doc = DocBuilder.from_entry(entry, with_images, only_common_imgs, max_image_size, use_clip)
 
     parsed_time = time.time()
 
@@ -184,6 +186,7 @@ def main(args):
     num_workers: int = args.num_workers
     only_common_imgs: int = not args.all_img_types
     max_image_size: int = args.max_img_dim
+    use_clip: bool = args.use_clip
     config_path: str = args.kafka_config
     log_dir: str = args.log_dir
     start_id: int = args.start_id
@@ -215,7 +218,20 @@ def main(args):
                 for entry in reader.read(dump):
                     if entry.page_id < start_id:
                         continue
-                    pool.apply_async(parse_entry, (entry, parsed_queue, with_images, only_common_imgs, max_image_size, output_dir, None, log_dir))
+                    pool.apply_async(
+                        parse_entry,
+                        (
+                            entry,
+                            parsed_queue,
+                            with_images,
+                            only_common_imgs, 
+                            max_image_size,
+                            use_clip,
+                            output_dir,
+                            None,
+                            log_dir
+                        )
+                    )
 
                 pool.join()
 
@@ -230,8 +246,18 @@ def main(args):
                 if entry.title == title:
                     break
 
-            parse_entry(entry, None, with_images, only_common_imgs, max_image_size, None, output_file, log_dir)
-        
+            parse_entry(
+                entry,
+                None,
+                with_images,
+                only_common_imgs,
+                max_image_size,
+                use_clip,
+                None,
+                output_file,
+                log_dir
+            )
+
         case _:
             raise ValueError(f'Unsupported mode {{{mode}}} passed')
 
