@@ -186,6 +186,7 @@ def main(args):
     max_image_size: int = args.max_img_dim
     config_path: str = args.kafka_config
     log_dir: str = args.log_dir
+    start_id: int = args.start_id
 
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
@@ -212,6 +213,8 @@ def main(args):
 
             with Pool(processes=num_workers) as pool:
                 for entry in reader.read(dump):
+                    if entry.page_id < start_id:
+                        continue
                     pool.apply_async(parse_entry, (entry, parsed_queue, with_images, only_common_imgs, max_image_size, output_dir, None, log_dir))
 
                 pool.join()

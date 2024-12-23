@@ -39,8 +39,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         '--output-mode', type=str, default='file',
-        help='Write to a {file} or {kafka} event store (the latter does not use other '
-        'output settings)'
+        help='Write to a {file} or {kafka} event store (the latter does not use other output settings)'
     )
     parser.add_argument(
         '--title', type=str,
@@ -52,26 +51,30 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         '--num-workers', type=int, default=1,
-        help='Amount of workers used for dump processing (used in stream mode), setting a high '
-        'value might cause difficulties with image downloading process'
+        help='Amount of workers used for dump processing (used in stream mode), setting a high value '
+        'might cause difficulties with image downloading process'
     )
     parser.add_argument(
         '--all-img-types', action='store_true',
-        help='Add uncommon image types (which may be hard to parse on later stages), '
-        'by default .jpeg, .jpg and .png files are added to the result'
+        help='Add uncommon image types (which may be hard to parse on later stages), by default '
+        '.jpeg, .jpg and .png files are added to the result'
     )
     parser.add_argument(
         '--max-img-dim', type=int, default=512,
-        help='Enables image size reduction down to the average of width and height'
-        'being less or equal to the passed value (0 for no reduction)'
+        help='Enables image size reduction down to the average of width and height being less or equal '
+        'to the passed value (0 for no reduction)'
     )
     parser.add_argument(
         '--kafka-config', type=str, default='./config/kafka.json',
-        help='Path to {kafka} config'
+        help='Path to kafka config'
     )
     parser.add_argument(
         '--log-dir', type=str, default='./logs',
         help='Path to log directory'
+    )
+    parser.add_argument(
+        '--start-id', type=int, default=0,
+        help='Skip all pages with IDs less than the passed value (stream mode only)'
     )
 
     return parser.parse_args()
