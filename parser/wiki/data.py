@@ -98,8 +98,8 @@ class ContentData:
                     filtered.append(node.title)
 
                 case mwparserfromhell.nodes.Tag:
-                    if str(node).startswith('\'\'') and node.endswith('\'\''):
-                        filtered.append(node.contents)
+                    if str(node).startswith('\'\'') and str(node).endswith('\'\''):
+                        filtered.append(str(node.contents).replace('[[', '').replace(']]', ''))
                     continue
 
                 case mwparserfromhell.nodes.Wikilink:
