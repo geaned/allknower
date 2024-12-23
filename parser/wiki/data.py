@@ -2,13 +2,14 @@ import base64
 from crc64iso.crc64iso import crc64
 from dataclasses import dataclass
 from io import BytesIO
+import logging
 import mwparserfromhell
 from PIL import Image
-from typing import List, Tuple, Union
 import regex
 import requests
-import time
+from typing import List, Tuple, Union
 import urllib.parse
+import warnings
 
 from utils import check_extension, parse_as_of_template
 
@@ -18,15 +19,21 @@ HEADERS = {
     '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 }
 
-
+warnings.WarningMessage
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
-    start_time = time.time()
     if max_image_size <= 0:
         return raw_image
 
-    image = Image.open(BytesIO(raw_image))
-    w, h = image.size
+    with warnings.catch_warnings(
+        category=Image.DecompressionBombWarning,
+        record=True
+    ) as warning_list:
+        image = Image.open(BytesIO(raw_image))
 
+    for w in warning_list:
+        logging.warning(w.message)
+
+    w, h = image.size
     if max_image_size >= w and max_image_size >= h:
         return raw_image
 
@@ -126,11 +133,11 @@ class ContentData:
 
                     filtered.append(node)
 
-        result = "".join(map(lambda x: regex.sub(r'\'{2,}', '', str(x)), filtered)).strip()
+        result = ''.join(map(lambda x: regex.sub(r'\'{2,}', '', str(x)), filtered)).strip()
 
         if result.startswith('REDIRECT'):
             self.redirect = True
-        
+
         return result
 
     def __parse_reduced(self, nodes: List[mwparserfromhell.nodes._base.Node]) -> str:
@@ -152,7 +159,7 @@ class ContentData:
                 case mwparserfromhell.nodes.Text:
                     filtered.append(node)
 
-        return "".join(map(str, filtered)).strip().split('|')[-1]
+        return ''.join(map(str, filtered)).strip().split('|')[-1]
 
     def __str__(self):
         return self.text
@@ -165,7 +172,7 @@ class ContentData:
 
     def get_images(self, with_images: bool = True, max_image_size: int = 0) -> List[ImageData]:
         if max_image_size < 0:
-            raise ValueError("Cannot reduce image dimensions to a negative values")
+            raise ValueError('Cannot reduce image dimensions to a negative values')
 
         image_data: List[ImageData] = list()
 
@@ -183,7 +190,7 @@ class ContentData:
             try:
                 buffer = requests.get(url, headers=HEADERS).content
             except Exception as e:
-                print(f'Error while downloading image {file_name}:', e)
+                logging.warning(f'While downloading image {title}:', e)
                 continue
 
             try:
@@ -191,7 +198,7 @@ class ContentData:
                 parsed_image = parse_image_binary(buffer, image_format, max_image_size)
                 data = base64.b64encode(parsed_image).decode()
             except Exception as e:
-                print(f'Error while parsing image {file_name}:', e)
+                logging.warning(f'While parsing image {title}: {str(e)}')
                 continue
 
             image_data.append(ImageData(
@@ -207,7 +214,7 @@ class ContentData:
     def __make_mock_image(title: str, description: str) -> ImageData:
         return ImageData(
             title,
-            "",
+            '',
             crc64(title),
             description
         )

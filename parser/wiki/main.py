@@ -1,8 +1,11 @@
 import json
+import logging
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
 from multiprocessing import Manager, Pool, Process, Queue
+import os
 from pathlib import Path
+import time
 from typing import Dict, List, Optional, Tuple
 
 from data import ContentData, ImageData
@@ -117,8 +120,30 @@ def parse_entry(
     max_image_size: int = 0,
     output_dir: Optional[str] = None,
     output_file: Optional[str] = None,
+    log_dir: Optional[str] = None
 ):
+    logging.basicConfig(
+        level=logging.INFO,
+        filename=(
+            Path(log_dir, f'output_{os.getpid()}.log')
+            if log_dir is not None
+            else Path(f'output_{os.getpid()}.log')
+        ),
+        filemode='a',
+        format='%(asctime)s %(levelname)s %(message)s'
+    )
+
+    start_time = time.time()
+    logging.info(f'Working on page {entry.page_id}: {entry.title}')
+
     doc = DocBuilder.from_entry(entry, with_images, only_common_imgs, max_image_size)
+
+    parsed_time = time.time()
+
+    if doc.redirect:
+        logging.info('Page is a redirection')
+    else:
+        logging.info(f'Took {parsed_time - start_time:.2f}s to parse')
 
     if output_file is None:
         output_file = f'page_{doc.doc_id}.json'
@@ -129,12 +154,16 @@ def parse_entry(
         return
     
     if output_dir is None:
-        raise ValueError("Output directory is required in stream mode")
+        raise ValueError('Output directory is required in stream mode')
 
     queue.put((
         Path(output_dir, output_file),
         json.dumps(doc.as_dict(), ensure_ascii=False, indent=4)
     ))
+
+    finish_time = time.time()
+
+    logging.info(f'Wrote successfully in {finish_time - parsed_time:.2f}s')
 
 
 def write_from_queue(q: Queue):
@@ -156,53 +185,54 @@ def main(args):
     only_common_imgs: int = not args.all_img_types
     max_image_size: int = args.max_img_dim
     config_path: str = args.kafka_config
+    log_dir: str = args.log_dir
 
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
 
     match mode:
-        case "stream":
+        case 'stream':
             m = Manager()
             parsed_queue = m.Queue(maxsize=1)
 
             match output_mode:
-                case "file":
+                case 'file':
                     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
                     Process(target=write_messages_file, args=(parsed_queue,)).start()
 
-                case "kafka":
+                case 'kafka':
                     config = json.load(open(config_path))
                     Process(target=write_messages_kafka, args=(parsed_queue, config)).start()
 
                 case _:
-                    raise ValueError(f"Unsupported output mode {{{output_mode}}} passed")
+                    raise ValueError(f'Unsupported output mode {{{output_mode}}} passed')
 
+            Path(log_dir).mkdir(parents=True, exist_ok=True)
 
             with Pool(processes=num_workers) as pool:
                 for entry in reader.read(dump):
-                    # for testing purposes
-                    if entry.page_id > 50:
-                        break
-                    pool.apply(parse_entry, (entry, parsed_queue, with_images, only_common_imgs, max_image_size, output_dir, None))
-        
-        case "single":
-            if output_mode == "kafka":
-                print("Only {{file}} output mode available in {{single}} mode")
+                    pool.apply_async(parse_entry, (entry, parsed_queue, with_images, only_common_imgs, max_image_size, output_dir, None, log_dir))
+
+                pool.join()
+
+        case 'single':
+            if output_mode == 'kafka':
+                print('Only {{file}} output mode available in {{single}} mode')
 
             # TODO: use writer
 
             if title is None:
-                raise ValueError("Title is required in single mode")
+                raise ValueError('Title is required in single mode')
 
             for entry in reader.read(dump):
                 if entry.title == title:
                     break
 
-            parse_entry(entry, None, with_images, only_common_imgs, max_image_size, None, output_file)
+            parse_entry(entry, None, with_images, only_common_imgs, max_image_size, None, output_file, log_dir)
         
         case _:
-            raise ValueError(f"Unsupported mode {{{mode}}} passed")
+            raise ValueError(f'Unsupported mode {{{mode}}} passed')
 
 
 if __name__ == '__main__':

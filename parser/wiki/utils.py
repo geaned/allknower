@@ -12,7 +12,7 @@ def make_par_id(doc_id: int, par_id: int) -> str:
 
 def make_mediawiki_stream(file_name: str) -> IteratorDump:
     def get_content(file_name: str):
-        with bz2.open(file_name, mode="r") as fp:
+        with bz2.open(file_name, mode='r') as fp:
             yield from fp
 
     return IteratorDump(iterator=get_content(file_name))
@@ -22,52 +22,56 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--file", type=str, default="./enwiki-20241101-pages-articles-multistream.xml.bz2",
-        help="Path to the MediaWiki dump file"
+        '--file', type=str, default='./enwiki-20241101-pages-articles-multistream.xml.bz2',
+        help='Path to the MediaWiki dump file'
     )
     parser.add_argument(
-        "--mode", type=str, default="stream",
-        help="Parse the whole {stream} or a {single} document"
+        '--mode', type=str, default='stream',
+        help='Parse the whole {stream} or a {single} document'
     )
     parser.add_argument(
-        "--output-dir", type=str, default="./parsed",
-        help="Directory to store parsed documents (used in stream mode)"
+        '--output-dir', type=str, default='./parsed',
+        help='Directory to store parsed documents (used in stream mode)'
     )
     parser.add_argument(
-        "--output-file", type=str, default="result.json",
-        help="Path to output file (used in single mode)"
+        '--output-file', type=str, default='result.json',
+        help='Path to output file (used in single mode)'
     )
     parser.add_argument(
-        "--output-mode", type=str, default="file",
-        help="Write to a {file} or {kafka} event store (the latter does not use other "
-        "output settings)"
+        '--output-mode', type=str, default='file',
+        help='Write to a {file} or {kafka} event store (the latter does not use other '
+        'output settings)'
     )
     parser.add_argument(
-        "--title", type=str,
-        help="Parse a document with a certain title (used in single mode)"
+        '--title', type=str,
+        help='Parse a document with a certain title (used in single mode)'
     )
     parser.add_argument(
-        "--mock-images", action="store_true",
-        help="Write placeholders instead of actual images (substantally increases performance)"
+        '--mock-images', action='store_true',
+        help='Write placeholders instead of actual images (substantally increases performance)'
     )
     parser.add_argument(
-        "--num-workers", type=int, default=1,
-        help="Amount of workers used for dump processing (used in stream mode), setting a high "
-        "value might cause difficulties with image downloading process"
+        '--num-workers', type=int, default=1,
+        help='Amount of workers used for dump processing (used in stream mode), setting a high '
+        'value might cause difficulties with image downloading process'
     )
     parser.add_argument(
-        "--all-img-types", action="store_true",
-        help="Add uncommon image types (which may be hard to parse on later stages), "
-        "by default .jpeg, .jpg and .png files are added to the result"
+        '--all-img-types', action='store_true',
+        help='Add uncommon image types (which may be hard to parse on later stages), '
+        'by default .jpeg, .jpg and .png files are added to the result'
     )
     parser.add_argument(
-        "--max-img-dim", type=int, default=640,
-        help="Enables image size reduction down to the largest dimension,"
-        "being of the same size as the passed value (0 for no reduction)"
+        '--max-img-dim', type=int, default=640,
+        help='Enables image size reduction down to the largest dimension,'
+        'being of the same size as the passed value (0 for no reduction)'
     )
     parser.add_argument(
-        "--kafka-config", type=str, default="./config/kafka.json",
-        help="Path to {kafka} config"
+        '--kafka-config', type=str, default='./config/kafka.json',
+        help='Path to {kafka} config'
+    )
+    parser.add_argument(
+        '--log-dir', type=str, default='./logs',
+        help='Path to log directory'
     )
 
     return parser.parse_args()
@@ -113,21 +117,21 @@ def parse_as_of_template(params: List[mwparserfromhell.nodes.extras.Parameter]) 
             case k:
                 val = k[0]
                 if year is None:
-                    year = " " + str(val)
+                    year = ' ' + str(val)
                 elif month is None:
                     month_key = str(val).lstrip('0')
                     parsed_month = month_to_name.get(month_key, month_key)
-                    month = " " + parsed_month
+                    month = ' ' + parsed_month
                 elif day is None:
-                    day = " " + str(val)
+                    day = ' ' + str(val)
 
     if lowercase:
         begin = begin[0].lower() + begin[1:]
 
     if year is None:
-        raise ValueError('Incorrect "as of" template')
+        raise ValueError('''Incorrect 'as of' template''')
 
-    return f'''{begin}{day if day is not None else ""}{month if month is not None else ""}{year}{end}'''
+    return f'''{begin}{day if day is not None else ''}{month if month is not None else ''}{year}{end}'''
 
 
 def check_extension(name: str, exts: List[str]) -> bool:

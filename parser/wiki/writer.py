@@ -1,5 +1,6 @@
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
+import logging
 from multiprocessing import Queue
 from typing import Any, Dict
 
@@ -32,9 +33,7 @@ def write_messages_kafka(queue: Queue, config: Dict[str, Any]):
     @staticmethod
     def delivery_report(err, msg):
         if err is not None:
-            print(f'Message delivery failed: {err}')
-        else:
-            print(f'Message delivered to {msg.topic()} [{msg.partition()}]')
+            logging.error(f'Message delivery to {msg.topic()} [{msg.partition()}] failed: {err}')
 
     while True:
         _, msg = queue.get()
