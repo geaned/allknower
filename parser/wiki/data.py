@@ -95,6 +95,11 @@ class ContentData:
                 case mwparserfromhell.nodes.Template:
                     if node.name.lower() == 'as of':
                         filtered.append(parse_as_of_template(node.params))
+                        continue
+
+                    for param in node.params:
+                        if param.name.strip() == 'image':
+                            self.images.append((param.value.strip(), ''))
 
                 case mwparserfromhell.nodes.ExternalLink:
                     filtered.append(node.title)
