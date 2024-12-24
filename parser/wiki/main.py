@@ -69,10 +69,9 @@ class DocBuilder:
             or check_extension(image.title, [".jpeg", ".jpg", ".png"])
         }
 
-        if doc.images:
+        if doc.images and image_result == ImageResult.Embedding:
             clip_start_time = time.time()
-            if image_result == ImageResult.Embedding:
-                DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
+            DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
 
             clip_finish_time = time.time()
             logging.info(
