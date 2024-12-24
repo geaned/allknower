@@ -1,0 +1,4 @@
+{
+    "catboost_ranker_path": "./data/catboost_wikir_v3_qrmse_pruned",
+    "processes_num": 10
+}
