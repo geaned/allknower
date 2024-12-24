@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  midway_search:
+    build:
+      context: ./midway_search/
+    ports:
+      - "7866:7866"
+      - "8090:8090"
+    volumes:
+      - /storage/kliffeup/kliffeup/allknower/data/:/app/data/
+      - /storage/kliffeup/kliffeup/allknower/common/:/app/common/

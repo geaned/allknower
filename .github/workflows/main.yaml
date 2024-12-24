@@ -1,0 +1,13 @@
+name: allknower CI/CD pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    uses: ./.github/workflows/lint.yaml
