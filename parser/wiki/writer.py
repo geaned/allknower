@@ -59,4 +59,3 @@ def write_messages_kafka(queue: Queue, log_dir: str = '.', config: Dict[str, Any
         _, msg = queue.get()
         producer.produce(config['topic'], value=msg, callback=delivery_report)
         producer.flush()
-        logging.info(f'Wrote successfully')
