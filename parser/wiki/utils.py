@@ -114,7 +114,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def parse_as_of_template(params: List[mwparserfromhell.nodes.extras.Parameter]) -> str:
+def parse_as_of_template(   # noqa: PLR0912
+    params: List[mwparserfromhell.nodes.extras.Parameter]
+) -> str:
     begin: str = "As of"
     lowercase: bool = False
     end: str = ""
@@ -168,7 +170,12 @@ def parse_as_of_template(params: List[mwparserfromhell.nodes.extras.Parameter]) 
     if year is None:
         raise ValueError("""Incorrect 'as of' template""")
 
-    return f"""{begin}{day if day is not None else ''}{month if month is not None else ''}{year}{end}"""
+    return (
+        f"""{begin}"""
+        f"""{day if day is not None else ''}"""
+        f"""{month if month is not None else ''}"""
+        f"""{year}{end}"""
+    )
 
 
 def check_extension(name: str, exts: List[str]) -> bool:

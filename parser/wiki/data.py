@@ -25,6 +25,16 @@ class ParsingMethod(Enum):
     WithoutImages = 2
 
 
+class ImageTypes(Enum):
+    OnlyCommonTypes = 1
+    AllTypes = 2
+
+
+class ImageResult(Enum):
+    Image = 1
+    Embedding = 2
+
+
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
     if max_image_size <= 0:
         return raw_image
@@ -198,7 +208,7 @@ class ContentData:
         if max_image_size < 0:
             raise ValueError("Cannot reduce image dimensions to a negative values")
 
-        image_data: List[ImageData] = list()
+        image_data: List[ImageData] = []
 
         if method == ParsingMethod.WithoutImages:
             # return mocked images

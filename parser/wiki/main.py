@@ -11,7 +11,7 @@ import requests
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from data import ContentData, ImageData, ParsingMethod
+from data import ContentData, ImageData, ImageResult, ImageTypes, ParsingMethod
 from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
 from writer import write_messages_file, write_messages_kafka
 
@@ -38,9 +38,9 @@ class DocBuilder:
         cls,
         entry: DumpEntry,
         method: ParsingMethod = ParsingMethod.WithImages,
-        only_common_images: bool = False,
+        image_types: ImageTypes = ImageTypes.OnlyCommonTypes,
         max_image_size: int = 0,
-        use_clip: bool = True,
+        image_result: ImageResult = ImageResult.Embedding,
     ) -> DocBuilder:
         doc = DocBuilder()
         doc.doc_id = entry.page_id
@@ -57,21 +57,25 @@ class DocBuilder:
             if (par.text and par.has_text)
         ]
 
-        doc.references = sorted({link for par in parsed for link in par.get_links()})
-        doc.categories = sorted({link for par in parsed for link in par.get_categories()})
+        doc.references = sorted(
+            {link for par in parsed for link in par.get_links()}
+        )
+        doc.categories = sorted(
+            {link for par in parsed for link in par.get_categories()}
+        )
 
         doc.images = {
             image.crc64: image
             for par in parsed
             for image in par.get_images(method, max_image_size)
-            if (not only_common_images)
+            if image_types == ImageTypes.AllTypes
             or check_extension(image.title, [".jpeg", ".jpg", ".png"])
             # preserves about 90 percent of all images
         }
 
         if doc.images:
             clip_start_time = time.time()
-            if use_clip:
+            if image_result == ImageResult.Embedding:
                 DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
 
             clip_finish_time = time.time()
@@ -156,9 +160,9 @@ def parse_entry(    # noqa: PLR0913
     entry: DumpEntry,
     queue: Optional[Queue],
     method: ParsingMethod = ParsingMethod.WithImages,
-    only_common_imgs: bool = True,
+    image_types: ImageTypes = ImageTypes.OnlyCommonTypes,
     max_image_size: int = 0,
-    use_clip: bool = True,
+    image_result: ImageResult = ImageResult.Embedding,
     output_dir: Optional[str] = None,
     output_file: Optional[str] = None,
     log_dir: str = ".",
@@ -174,7 +178,7 @@ def parse_entry(    # noqa: PLR0913
     logging.info(f"Working on page {entry.page_id}: {entry.title}")
 
     doc = DocBuilder.from_entry(
-        entry, method, only_common_imgs, max_image_size, use_clip
+        entry, method, image_types, max_image_size, image_result
     )
 
     parsed_time = time.time()
@@ -224,9 +228,17 @@ def main(args):
         else ParsingMethod.WithImages
     )
     num_workers: int = args.num_workers
-    only_common_imgs: int = not args.all_img_types
+    image_types: ImageTypes = (
+        ImageTypes.AllTypes
+        if args.all_img_types
+        else ImageTypes.OnlyCommonTypes
+    )
     max_image_size: int = args.max_img_dim
-    use_clip: bool = args.use_clip
+    image_result: ImageResult = (
+        ImageResult.Embedding
+        if args.use_clip
+        else ImageResult.Image
+    )
     config_path: str = args.kafka_config
     log_dir: str = args.log_dir
     start_id: int = args.start_id
@@ -273,9 +285,9 @@ def main(args):
                             entry,
                             parsed_queue,
                             method,
-                            only_common_imgs,
+                            image_types,
                             max_image_size,
-                            use_clip,
+                            image_result,
                             output_dir,
                             None,
                             log_dir,
@@ -286,7 +298,9 @@ def main(args):
 
         case "single":
             if output_mode == "kafka":
-                logging.warning("Only {{file}} output mode available in {{single}} mode")
+                logging.warning(
+                    "Only {{file}} output mode available in {{single}} mode"
+                )
 
             if title is None:
                 raise ValueError("Title is required in single mode")
@@ -299,9 +313,9 @@ def main(args):
                 entry,
                 None,
                 method,
-                only_common_imgs,
+                image_types,
                 max_image_size,
-                use_clip,
+                image_result,
                 None,
                 output_file,
                 log_dir,
