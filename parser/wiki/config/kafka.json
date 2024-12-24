@@ -6,5 +6,5 @@
         "localhost:9092",
         "localhost:9093"
     ],
-    "max_message_size": 134217728
+    "max_message_size": 33554432
 }
