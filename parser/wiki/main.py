@@ -190,7 +190,9 @@ def parse_entry(
     if output_dir is None:
         raise ValueError('Output directory is required in stream mode')
 
+    # strict format: ID: int, path: str, doc: str
     queue.put((
+        entry.page_id,
         Path(output_dir, output_file),
         json.dumps(doc.as_dict(), ensure_ascii=False, indent=4)
     ))

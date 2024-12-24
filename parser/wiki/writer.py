@@ -15,11 +15,12 @@ def write_messages_file(queue: Queue, log_dir: str = '.'):
     )
 
     while True:
-        path, msg = queue.get()
+        page_id, path, msg = queue.get()
+        logging.info(f'Writing page {page_id}')
+
         try:
             with open(path, 'w') as result:
                 result.write(msg)
-            logging.info(f'Wrote successfully')
         except Exception as e:
             logging.error(f'While writing to file: {str(e)}')
 
@@ -49,13 +50,16 @@ def write_messages_kafka(queue: Queue, log_dir: str = '.', config: Dict[str, Any
     admin_client.create_topics([topic])
 
     @staticmethod
-    def delivery_report(err, msg):
+    def delivery_report(err, msg):  # type: ignore
         if err is not None:
-            logging.error(f'While writing to {msg.topic()} [{msg.partition()}] failed: {err}')
-        else:
-            logging.info(f'Wrote successfully')
+            logging.error(f'While writing to {msg.topic()} [{msg.partition()}] (via callback): {err}')
 
     while True:
-        _, msg = queue.get()
-        producer.produce(config['topic'], value=msg, callback=delivery_report)
+        page_id, _, msg = queue.get()
+        logging.info(f'Writing page {page_id}')
+
+        try:
+            producer.produce(config['topic'], value=msg, callback=delivery_report)
+        except Exception as e:
+            logging.error(f'While writing to {config['topic']}: {e}')
         producer.flush()
