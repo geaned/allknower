@@ -2,7 +2,6 @@ import base64
 from crc64iso.crc64iso import crc64
 from dataclasses import dataclass
 from io import BytesIO
-import json
 import logging
 import mwparserfromhell
 from PIL import Image
@@ -20,10 +19,6 @@ DOWNLOAD_HEADERS = {
     '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 }
 
-CLIP_ENDPOINT = 'http://195.70.199.13:8765/embed/images/base64'
-CLIP_HEADERS = {
-    'Content-Type': 'application/json'
-}
 
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
     if max_image_size <= 0:
@@ -112,7 +107,7 @@ class ContentData:
                 case mwparserfromhell.nodes.Wikilink:
                     if node.title.startswith('File:'):
                         image_title = str(node.title).replace('File:', '')
-                        
+
                         if not check_extension(node.title, ContentData.wiki_image_exts):
                             continue
 
@@ -176,7 +171,7 @@ class ContentData:
     def get_categories(self):
         return self.categories
 
-    def get_images(self, with_images: bool = True, max_image_size: int = 0, use_clip: bool = True) -> List[ImageData]:
+    def get_images(self, with_images: bool = True, max_image_size: int = 0) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError('Cannot reduce image dimensions to a negative values')
 
@@ -217,27 +212,6 @@ class ContentData:
             ))
 
             logging.info(f'Successfully parsed image {title}')
-
-        # batch CLIP inference
-        try:
-            if use_clip:
-                resp = requests.post(
-                    CLIP_ENDPOINT,
-                    headers=CLIP_HEADERS,
-                    json=[image.data for image in image_data]
-                ).content
-                embeddings = json.loads(resp)['embeddings']
-
-                if len(image_data) != len(embeddings):
-                    raise Exception(
-                        f'Encountered unequal amounts of images ({len(image_data)}) '
-                        f'and embeddings ({len(embeddings)})'
-                    )
-                for image, embedding in zip(image_data, embeddings):
-                    image.data = None
-                    image.embedding = embedding
-        except Exception as e:
-            logging.error(f'While applying CLIP: {str(e)}')
 
         return image_data
 

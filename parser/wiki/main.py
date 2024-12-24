@@ -5,12 +5,19 @@ from mediawiki_dump.reader import DumpReader
 from multiprocessing import Manager, Pool, Process, Queue
 import os
 from pathlib import Path
+import requests
 import time
 from typing import Dict, List, Optional, Tuple
 
 from data import ContentData, ImageData
 from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
 from writer import write_messages_file, write_messages_kafka
+
+
+CLIP_ENDPOINT = 'http://195.70.199.13:8765/embed/images/base64'
+CLIP_HEADERS = {
+    'Content-Type': 'application/json'
+}
 
 
 class DocBuilder():
@@ -58,16 +65,45 @@ class DocBuilder():
 
         doc.images = {
             image.crc64: image
-            for par in parsed for image in par.get_images(with_images, max_image_size, use_clip)
+            for par in parsed for image in par.get_images(with_images, max_image_size)
             if (not only_common_images) or check_extension(image.title, ['.jpeg', '.jpg', '.png'])
             # preserves about 90 percent of all images
         }
+
+        if doc.images:
+            clip_start_time = time.time()
+            if use_clip:
+                DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
+
+            clip_finish_time = time.time()
+            logging.info(f'Request to CLIP server took {clip_finish_time - clip_start_time:.2f}s')
 
         return doc
 
     @staticmethod
     def parse_content(data: str):
         return [ContentData(idx, raw) for idx, raw in enumerate(data.replace('\t', '').split('\n\n'))]
+
+    @staticmethod
+    def enrich_with_clip_embeddings(images: List[ImageData]) -> None:
+        try:
+            resp = requests.post(
+                CLIP_ENDPOINT,
+                headers=CLIP_HEADERS,
+                json=[image.data for image in images]
+            ).content
+            embeddings = json.loads(resp)['embeddings']
+
+            if len(images) != len(embeddings):
+                raise Exception(
+                    f'Encountered unequal amounts of images ({len(images)}) '
+                    f'and embeddings ({len(embeddings)})'
+                )
+            for image, embedding in zip(images, embeddings):
+                image.data = None
+                image.embedding = [round(val, ndigits=7) for val in embedding]
+        except Exception as e:
+            logging.error(f'While applying CLIP: {str(e)}')
 
     def as_dict(self):
         if self.redirect:
@@ -97,6 +133,7 @@ class DocBuilder():
                 [
                     {
                         'image': image.data,
+                        'embedding': image.embedding,
                         'metadata': {
                             'title': image.title,
                             'description': image.desc,
@@ -122,15 +159,11 @@ def parse_entry(
     use_clip: bool = True,
     output_dir: Optional[str] = None,
     output_file: Optional[str] = None,
-    log_dir: Optional[str] = None
+    log_dir: str = '.'
 ):
     logging.basicConfig(
         level=logging.INFO,
-        filename=(
-            Path(log_dir, f'output_{os.getpid()}.log')
-            if log_dir is not None
-            else Path(f'output_{os.getpid()}.log')
-        ),
+        filename=Path(log_dir, f'output_{os.getpid()}.log'),
         filemode='a',
         format='%(asctime)s %(levelname)s %(message)s'
     )
@@ -141,7 +174,6 @@ def parse_entry(
     doc = DocBuilder.from_entry(entry, with_images, only_common_imgs, max_image_size, use_clip)
 
     parsed_time = time.time()
-
     if doc.redirect:
         logging.info('Page is a redirection')
     else:
@@ -152,9 +184,9 @@ def parse_entry(
 
     if queue is None:
         with open(output_file, 'w') as result:
-            json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
+            json.dump(doc.as_dict(), result, ensure_ascii=False)
         return
-    
+
     if output_dir is None:
         raise ValueError('Output directory is required in stream mode')
 
@@ -162,10 +194,6 @@ def parse_entry(
         Path(output_dir, output_file),
         json.dumps(doc.as_dict(), ensure_ascii=False, indent=4)
     ))
-
-    finish_time = time.time()
-
-    logging.info(f'Wrote successfully in {finish_time - parsed_time:.2f}s')
 
 
 def write_from_queue(q: Queue):
@@ -194,6 +222,8 @@ def main(args):
     dump = make_mediawiki_stream(file_name)
     reader = DumpReader()
 
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
+
     match mode:
         case 'stream':
             m = Manager()
@@ -203,16 +233,14 @@ def main(args):
                 case 'file':
                     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-                    Process(target=write_messages_file, args=(parsed_queue,)).start()
+                    Process(target=write_messages_file, args=(parsed_queue, log_dir)).start()
 
                 case 'kafka':
                     config = json.load(open(config_path))
-                    Process(target=write_messages_kafka, args=(parsed_queue, config)).start()
+                    Process(target=write_messages_kafka, args=(parsed_queue, log_dir, config)).start()
 
                 case _:
                     raise ValueError(f'Unsupported output mode {{{output_mode}}} passed')
-
-            Path(log_dir).mkdir(parents=True, exist_ok=True)
 
             with Pool(processes=num_workers) as pool:
                 for entry in reader.read(dump):
