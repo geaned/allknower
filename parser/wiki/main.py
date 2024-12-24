@@ -184,7 +184,7 @@ def parse_entry(
 
     if queue is None:
         with open(output_file, 'w') as result:
-            json.dump(doc.as_dict(), result, ensure_ascii=False)
+            json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
         return
 
     if output_dir is None:
@@ -194,7 +194,7 @@ def parse_entry(
     queue.put((
         entry.page_id,
         Path(output_dir, output_file),
-        json.dumps(doc.as_dict(), ensure_ascii=False, indent=4)
+        json.dumps(doc.as_dict(), ensure_ascii=False)
     ))
 
 
