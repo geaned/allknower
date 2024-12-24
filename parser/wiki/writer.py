@@ -1,9 +1,10 @@
-from confluent_kafka import Producer  # noqa: E401
-from confluent_kafka.admin import AdminClient, NewTopic  # noqa: E401
 import logging
 from multiprocessing import Queue
 from pathlib import Path
 from typing import Any, Dict
+
+from confluent_kafka import Producer
+from confluent_kafka.admin import AdminClient, NewTopic
 
 
 def write_messages_file(queue: Queue, log_dir: str = "."):
@@ -25,9 +26,7 @@ def write_messages_file(queue: Queue, log_dir: str = "."):
             logging.error(f"While writing to file: {str(e)}")
 
 
-def write_messages_kafka(
-    queue: Queue, log_dir: str, config: Dict[str, Any]
-):
+def write_messages_kafka(queue: Queue, log_dir: str, config: Dict[str, Any]):
     logging.basicConfig(
         level=logging.INFO,
         filename=Path(log_dir, "output_writer.log"),
@@ -65,5 +64,5 @@ def write_messages_kafka(
         try:
             producer.produce(config["topic"], value=msg, callback=delivery_report)
         except Exception as e:  # noqa: BLE001
-            logging.error(f'While writing to {config['topic']}: {e}')
+            logging.error(f"While writing to {config['topic']}: {e}")
         producer.flush()

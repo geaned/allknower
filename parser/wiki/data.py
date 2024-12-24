@@ -1,17 +1,17 @@
 import base64
-from enum import Enum
-from crc64iso.crc64iso import crc64  # noqa: E501
-from dataclasses import dataclass
-from io import BytesIO
 import logging
-import mwparserfromhell  # noqa: E501
-from PIL import Image
-import regex
-import requests
-from typing import List, Optional, Tuple, Union
 import urllib.parse
 import warnings
+from dataclasses import dataclass
+from enum import Enum
+from io import BytesIO
+from typing import List, Optional, Tuple, Union
 
+import mwparserfromhell
+import regex
+import requests
+from crc64iso.crc64iso import crc64
+from PIL import Image
 from utils import check_extension, get_corrected_dimensions, parse_as_of_template
 
 DOWNLOAD_HEADERS = {
@@ -158,11 +158,10 @@ class ContentData:
                         self.links.append(str(node.title))
 
                 case _:
-                    if (
-                        isinstance(node, mwparserfromhell.nodes.text.Text) and 
-                        any(x.isalpha() for x in str(node))
+                    if isinstance(node, mwparserfromhell.nodes.text.Text) and any(
+                        x.isalpha() for x in str(node)
                     ):
-                            self.has_text = True
+                        self.has_text = True
 
                     filtered.append(node)
 
@@ -203,7 +202,7 @@ class ContentData:
         return self.categories
 
     def get_images(
-        self, method = ParsingMethod.WithImages, max_image_size: int = 0     # noqa: FBT001
+        self, method=ParsingMethod.WithImages, max_image_size: int = 0
     ) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError("Cannot reduce image dimensions to a negative values")

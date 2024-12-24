@@ -2,19 +2,18 @@ from __future__ import annotations
 
 import json
 import logging
-from mediawiki_dump.entry import DumpEntry  # noqa: E501
-from mediawiki_dump.reader import DumpReader  # noqa: E501
-from multiprocessing import Manager, Pool, Process, Queue
 import os
-from pathlib import Path
-import requests
 import time
+from multiprocessing import Manager, Pool, Process, Queue
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import requests
 from data import ContentData, ImageData, ImageResult, ImageTypes, ParsingMethod
-from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
+from mediawiki_dump.entry import DumpEntry
+from mediawiki_dump.reader import DumpReader
+from utils import check_extension, make_mediawiki_stream, make_par_id, parse_args
 from writer import write_messages_file, write_messages_kafka
-
 
 CLIP_ENDPOINT = "http://195.70.199.13:8765/embed/images/base64"
 CLIP_HEADERS = {"Content-Type": "application/json"}
@@ -57,9 +56,7 @@ class DocBuilder:
             if (par.text and par.has_text)
         ]
 
-        doc.references = sorted(
-            {link for par in parsed for link in par.get_links()}
-        )
+        doc.references = sorted({link for par in parsed for link in par.get_links()})
         doc.categories = sorted(
             {link for par in parsed for link in par.get_categories()}
         )
@@ -70,7 +67,6 @@ class DocBuilder:
             for image in par.get_images(method, max_image_size)
             if image_types == ImageTypes.AllTypes
             or check_extension(image.title, [".jpeg", ".jpg", ".png"])
-            # preserves about 90 percent of all images
         }
 
         if doc.images:
@@ -99,7 +95,7 @@ class DocBuilder:
                 CLIP_ENDPOINT,
                 headers=CLIP_HEADERS,
                 json=[image.data for image in images],
-                timeout=60
+                timeout=60,
             ).content
             embeddings = json.loads(resp)["embeddings"]
 
@@ -108,7 +104,7 @@ class DocBuilder:
                     f"Encountered unequal amounts of images ({len(images)}) "
                     f"and embeddings ({len(embeddings)})"
                 )
-            for image, embedding in zip(images, embeddings):
+            for image, embedding in zip(images, embeddings, strict=False):
                 image.data = None
                 image.embedding = [round(val, ndigits=7) for val in embedding]
         except Exception as e:  # noqa: BLE001
@@ -126,10 +122,7 @@ class DocBuilder:
             "title": self.title,
             "contents": (
                 [
-                    {
-                        "content_id": par_id,
-                        "content": text,
-                    }
+                    {"content_id": par_id, "content": text}
                     for par_id, text in self.contents
                 ]
                 if self.contents is not None
@@ -140,10 +133,7 @@ class DocBuilder:
                     {
                         "image": image.data,
                         "embedding": image.embedding,
-                        "metadata": {
-                            "title": image.title,
-                            "description": image.desc,
-                        },
+                        "metadata": {"title": image.title, "description": image.desc},
                         "crc64": crc64,
                     }
                     for crc64, image in self.images.items()
@@ -156,7 +146,7 @@ class DocBuilder:
         }
 
 
-def parse_entry(    # noqa: PLR0913
+def parse_entry(  # noqa: PLR0913
     entry: DumpEntry,
     queue: Optional[Queue],
     method: ParsingMethod = ParsingMethod.WithImages,
@@ -223,21 +213,15 @@ def main(args):
     output_file: str = args.output_file
     output_mode: str = args.output_mode
     method: ParsingMethod = (
-        ParsingMethod.WithoutImages
-        if args.mock_images
-        else ParsingMethod.WithImages
+        ParsingMethod.WithoutImages if args.mock_images else ParsingMethod.WithImages
     )
     num_workers: int = args.num_workers
     image_types: ImageTypes = (
-        ImageTypes.AllTypes
-        if args.all_img_types
-        else ImageTypes.OnlyCommonTypes
+        ImageTypes.AllTypes if args.all_img_types else ImageTypes.OnlyCommonTypes
     )
     max_image_size: int = args.max_img_dim
     image_result: ImageResult = (
-        ImageResult.Embedding
-        if args.use_clip
-        else ImageResult.Image
+        ImageResult.Embedding if args.use_clip else ImageResult.Image
     )
     config_path: str = args.kafka_config
     log_dir: str = args.log_dir

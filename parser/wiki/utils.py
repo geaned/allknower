@@ -2,8 +2,8 @@ import argparse
 import bz2
 from typing import List, Optional, Tuple
 
-from mediawiki_dump.dumps import IteratorDump  # noqa: E501
-import mwparserfromhell  # noqa: E501
+import mwparserfromhell
+from mediawiki_dump.dumps import IteratorDump
 
 
 def make_par_id(doc_id: int, par_id: int) -> str:
@@ -98,24 +98,20 @@ def parse_args() -> argparse.Namespace:
         help="Path to kafka config",
     )
     parser.add_argument(
-        "--log-dir",
-        type=str,
-        default="./logs",
-        help="Path to log directory"
+        "--log-dir", type=str, default="./logs", help="Path to log directory"
     )
     parser.add_argument(
         "--start-id",
         type=int,
         default=0,
-        help="Skip all pages with IDs less than the passed value "
-        "(stream mode only)",
+        help="Skip all pages with IDs less than the passed value " "(stream mode only)",
     )
 
     return parser.parse_args()
 
 
-def parse_as_of_template(   # noqa: PLR0912
-    params: List[mwparserfromhell.nodes.extras.Parameter]
+def parse_as_of_template(  # noqa: PLR0912
+    params: List[mwparserfromhell.nodes.extras.Parameter],
 ) -> str:
     begin: str = "As of"
     lowercase: bool = False
@@ -179,6 +175,7 @@ def parse_as_of_template(   # noqa: PLR0912
 
 
 def check_extension(name: str, exts: List[str]) -> bool:
+    # preserves about 90 percent of all images
     return any(name.endswith(ext) for ext in exts)
 
 
