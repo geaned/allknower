@@ -11,7 +11,7 @@ import requests
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from data import ContentData, ImageData
+from data import ContentData, ImageData, ParsingMethod
 from utils import check_extension, make_par_id, make_mediawiki_stream, parse_args
 from writer import write_messages_file, write_messages_kafka
 
@@ -37,7 +37,7 @@ class DocBuilder:
     def from_entry(
         cls,
         entry: DumpEntry,
-        with_images: bool = True,
+        method: ParsingMethod = ParsingMethod.WithImages,
         only_common_images: bool = False,
         max_image_size: int = 0,
         use_clip: bool = True,
@@ -57,17 +57,13 @@ class DocBuilder:
             if (par.text and par.has_text)
         ]
 
-        doc.references = sorted(
-            list(set([link for par in parsed for link in par.get_links()]))
-        )
-        doc.categories = sorted(
-            list(set([link for par in parsed for link in par.get_categories()]))
-        )
+        doc.references = sorted({link for par in parsed for link in par.get_links()})
+        doc.categories = sorted({link for par in parsed for link in par.get_categories()})
 
         doc.images = {
             image.crc64: image
             for par in parsed
-            for image in par.get_images(with_images, max_image_size)
+            for image in par.get_images(method, max_image_size)
             if (not only_common_images)
             or check_extension(image.title, [".jpeg", ".jpg", ".png"])
             # preserves about 90 percent of all images
@@ -99,6 +95,7 @@ class DocBuilder:
                 CLIP_ENDPOINT,
                 headers=CLIP_HEADERS,
                 json=[image.data for image in images],
+                timeout=60
             ).content
             embeddings = json.loads(resp)["embeddings"]
 
@@ -110,7 +107,7 @@ class DocBuilder:
             for image, embedding in zip(images, embeddings):
                 image.data = None
                 image.embedding = [round(val, ndigits=7) for val in embedding]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logging.error(f"While applying CLIP: {str(e)}")
 
     def as_dict(self) -> Dict[str, Any]:
@@ -155,10 +152,10 @@ class DocBuilder:
         }
 
 
-def parse_entry(
+def parse_entry(    # noqa: PLR0913
     entry: DumpEntry,
     queue: Optional[Queue],
-    with_images: bool = True,
+    method: ParsingMethod = ParsingMethod.WithImages,
     only_common_imgs: bool = True,
     max_image_size: int = 0,
     use_clip: bool = True,
@@ -177,7 +174,7 @@ def parse_entry(
     logging.info(f"Working on page {entry.page_id}: {entry.title}")
 
     doc = DocBuilder.from_entry(
-        entry, with_images, only_common_imgs, max_image_size, use_clip
+        entry, method, only_common_imgs, max_image_size, use_clip
     )
 
     parsed_time = time.time()
@@ -221,7 +218,11 @@ def main(args):
     output_dir: str = args.output_dir
     output_file: str = args.output_file
     output_mode: str = args.output_mode
-    with_images: bool = not args.mock_images
+    method: ParsingMethod = (
+        ParsingMethod.WithoutImages
+        if args.mock_images
+        else ParsingMethod.WithImages
+    )
     num_workers: int = args.num_workers
     only_common_imgs: int = not args.all_img_types
     max_image_size: int = args.max_img_dim
@@ -249,7 +250,9 @@ def main(args):
                     ).start()
 
                 case "kafka":
-                    config = json.load(open(config_path))
+                    with open(config_path) as config_in:
+                        config = json.load(config_in)
+
                     Process(
                         target=write_messages_kafka,
                         args=(parsed_queue, log_dir, config),
@@ -269,7 +272,7 @@ def main(args):
                         (
                             entry,
                             parsed_queue,
-                            with_images,
+                            method,
                             only_common_imgs,
                             max_image_size,
                             use_clip,
@@ -283,7 +286,7 @@ def main(args):
 
         case "single":
             if output_mode == "kafka":
-                print("Only {{file}} output mode available in {{single}} mode")
+                logging.warning("Only {{file}} output mode available in {{single}} mode")
 
             if title is None:
                 raise ValueError("Title is required in single mode")
@@ -295,7 +298,7 @@ def main(args):
             parse_entry(
                 entry,
                 None,
-                with_images,
+                method,
                 only_common_imgs,
                 max_image_size,
                 use_clip,

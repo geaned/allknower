@@ -21,12 +21,12 @@ def write_messages_file(queue: Queue, log_dir: str = "."):
         try:
             with open(path, "w") as result:
                 result.write(msg)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logging.error(f"While writing to file: {str(e)}")
 
 
 def write_messages_kafka(
-    queue: Queue, log_dir: str = ".", config: Dict[str, Any] = dict()
+    queue: Queue, log_dir: str, config: Dict[str, Any]
 ):
     logging.basicConfig(
         level=logging.INFO,
@@ -51,10 +51,11 @@ def write_messages_kafka(
     )
     admin_client.create_topics([topic])
 
-    def delivery_report(err, msg):  # type: ignore
+    def delivery_report(err, msg):
         if err is not None:
             logging.error(
-                f"While writing to {msg.topic()} [{msg.partition()}] (via callback): {err}"
+                f"While writing to {msg.topic()} [{msg.partition()}] "
+                f"(via callback): {err}"
             )
 
     while True:
@@ -63,6 +64,6 @@ def write_messages_kafka(
 
         try:
             producer.produce(config["topic"], value=msg, callback=delivery_report)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logging.error(f'While writing to {config['topic']}: {e}')
         producer.flush()

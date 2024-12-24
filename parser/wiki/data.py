@@ -1,4 +1,5 @@
 import base64
+from enum import Enum
 from crc64iso.crc64iso import crc64  # noqa: E501
 from dataclasses import dataclass
 from io import BytesIO
@@ -17,6 +18,11 @@ DOWNLOAD_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 }
+
+
+class ParsingMethod(Enum):
+    WithImages = 1
+    WithoutImages = 2
 
 
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
@@ -75,12 +81,12 @@ class ContentData:
         self.redirect = False
         self.has_text = False
 
-        self.links: List[str] = list()
-        self.categories: List[str] = list()
-        self.images: List[Tuple[str, str]] = list()
+        self.links: List[str] = []
+        self.categories: List[str] = []
+        self.images: List[Tuple[str, str]] = []
         self.text = self.__parse(s)
 
-    def __parse(self, s: str):
+    def __parse(self, s: str):  # noqa: PLR0912
         nodes = mwparserfromhell.parse(s).nodes
         filtered: List[
             Union[
@@ -88,7 +94,7 @@ class ContentData:
                 mwparserfromhell.nodes._base.Node,
                 mwparserfromhell.wikicode.Wikicode,
             ]
-        ] = list()
+        ] = []
 
         for node in nodes:
             match type(node):
@@ -142,15 +148,15 @@ class ContentData:
                         self.links.append(str(node.title))
 
                 case _:
-                    if isinstance(node, mwparserfromhell.nodes.text.Text):
-                        if any(x.isalpha() for x in str(node)):
+                    if (
+                        isinstance(node, mwparserfromhell.nodes.text.Text) and 
+                        any(x.isalpha() for x in str(node))
+                    ):
                             self.has_text = True
 
                     filtered.append(node)
 
-        result = "".join(
-            map(lambda x: regex.sub(r"\'{2,}", "", str(x)), filtered)
-        ).strip()
+        result = "".join(regex.sub(r"\'{2,}", "", str(x)) for x in filtered).strip()
 
         if result.startswith("REDIRECT"):
             self.redirect = True
@@ -160,7 +166,7 @@ class ContentData:
     def __parse_reduced(self, nodes: List[mwparserfromhell.nodes._base.Node]) -> str:
         filtered: List[
             Union[mwparserfromhell.nodes._base.Node, mwparserfromhell.wikicode.Wikicode]
-        ] = list()
+        ] = []
 
         for node in nodes:
             match type(node):
@@ -187,14 +193,14 @@ class ContentData:
         return self.categories
 
     def get_images(
-        self, with_images: bool = True, max_image_size: int = 0
+        self, method = ParsingMethod.WithImages, max_image_size: int = 0     # noqa: FBT001
     ) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError("Cannot reduce image dimensions to a negative values")
 
         image_data: List[ImageData] = list()
 
-        if not with_images:
+        if method == ParsingMethod.WithoutImages:
             # return mocked images
             for title, description in self.images:
                 image_data.append(self.__make_mock_image(title, description))
@@ -208,8 +214,8 @@ class ContentData:
             url = f"""http://commons.wikimedia.org/wiki/Special:FilePath/{file_name}"""
 
             try:
-                buffer = requests.get(url, headers=DOWNLOAD_HEADERS).content
-            except Exception as e:
+                buffer = requests.get(url, headers=DOWNLOAD_HEADERS, timeout=60).content
+            except Exception as e:  # noqa: BLE001
                 logging.warning(f"While downloading image {title}:", e)
                 continue
 
@@ -217,7 +223,7 @@ class ContentData:
                 image_format = Image.registered_extensions()[title[title.rfind(".") :]]
                 parsed_image = parse_image_binary(buffer, image_format, max_image_size)
                 data = base64.b64encode(parsed_image).decode()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logging.warning(f"While parsing image {title}: {str(e)}")
                 continue
 
