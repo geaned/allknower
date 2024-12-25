@@ -70,14 +70,14 @@ class DocBuilder:
         }
 
         if doc.images and image_result == ImageResult.Embedding:
-
             try:
                 clip_start_time = time.time()
                 DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
 
                 clip_finish_time = time.time()
                 logging.info(
-                    f"Request to CLIP server took {clip_finish_time - clip_start_time:.2f}s"
+                    f"Request to CLIP server took "
+                    f"{clip_finish_time - clip_start_time:.2f}s"
                 )
             except Exception as e:  # noqa: BLE001
                 logging.error(f"While applying CLIP: {str(e)}")
