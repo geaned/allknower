@@ -70,13 +70,17 @@ class DocBuilder:
         }
 
         if doc.images and image_result == ImageResult.Embedding:
-            clip_start_time = time.time()
-            DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
 
-            clip_finish_time = time.time()
-            logging.info(
-                f"Request to CLIP server took {clip_finish_time - clip_start_time:.2f}s"
-            )
+            try:
+                clip_start_time = time.time()
+                DocBuilder.enrich_with_clip_embeddings(list(doc.images.values()))
+
+                clip_finish_time = time.time()
+                logging.info(
+                    f"Request to CLIP server took {clip_finish_time - clip_start_time:.2f}s"
+                )
+            except Exception as e:  # noqa: BLE001
+                logging.error(f"While applying CLIP: {str(e)}")
 
         return doc
 
@@ -89,25 +93,22 @@ class DocBuilder:
 
     @staticmethod
     def enrich_with_clip_embeddings(images: List[ImageData]) -> None:
-        try:
-            resp = requests.post(
-                CLIP_ENDPOINT,
-                headers=CLIP_HEADERS,
-                json=[image.data for image in images],
-                timeout=60,
-            ).content
-            embeddings = json.loads(resp)["embeddings"]
+        resp = requests.post(
+            CLIP_ENDPOINT,
+            headers=CLIP_HEADERS,
+            json=[image.data for image in images],
+            timeout=60,
+        ).content
+        embeddings = json.loads(resp)["embeddings"]
 
-            if len(images) != len(embeddings):
-                raise Exception(
-                    f"Encountered unequal amounts of images ({len(images)}) "
-                    f"and embeddings ({len(embeddings)})"
-                )
-            for image, embedding in zip(images, embeddings, strict=False):
-                image.data = None
-                image.embedding = [round(val, ndigits=7) for val in embedding]
-        except Exception as e:  # noqa: BLE001
-            logging.error(f"While applying CLIP: {str(e)}")
+        if len(images) != len(embeddings):
+            raise Exception(
+                f"Encountered unequal amounts of images ({len(images)}) "
+                f"and embeddings ({len(embeddings)})"
+            )
+        for image, embedding in zip(images, embeddings, strict=False):
+            image.data = None
+            image.embedding = [round(val, ndigits=7) for val in embedding]
 
     def as_dict(self) -> Dict[str, Any]:
         if self.redirect:
