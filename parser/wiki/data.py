@@ -229,7 +229,7 @@ class ContentData:
                 continue
 
             try:
-                image_format = Image.registered_extensions()[title[title.rfind(".") :]]
+                image_format = Image.registered_extensions()[title[title.rfind(".") :]].lower()
                 parsed_image = parse_image_binary(buffer, image_format, max_image_size)
                 data = base64.b64encode(parsed_image).decode()
             except Exception as e:  # noqa: BLE001
