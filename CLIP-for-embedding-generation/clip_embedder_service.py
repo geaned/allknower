@@ -8,7 +8,6 @@ from typing import List
 
 import torch
 import uvicorn
-from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from PIL import Image, ImageFile
@@ -21,10 +20,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class ClipWithPreprocessingModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        load_dotenv()
+
         self.clip_model = CLIPModel.from_pretrained(
             CLIP_REPO_ID,
-            attn_implementation="flash_attention_2",
             device_map=os.environ.get("CLIP_SERVICE_DEVICE", "cuda:0"),
             torch_dtype=torch.bfloat16,
         )
