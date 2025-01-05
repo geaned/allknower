@@ -1,5 +1,8 @@
 version: '3.7'
 services:
+  base_search:
+    build:
+      context: ./basesearch/
   midway_search:
     build:
       context: ./midway_search/
