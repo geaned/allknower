@@ -53,5 +53,5 @@ kotlin {
 }
 
 application {
-    mainClass.set("MainKt")
+    mainClass.set("org.example.MainKt")
 }
