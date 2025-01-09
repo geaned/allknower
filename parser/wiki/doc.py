@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, cast, Dict, List, Tuple, Optional
-
 import json
 import logging
 import time
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple, cast
+
 import requests
 from data import (
     ContentData,
@@ -13,11 +13,10 @@ from data import (
     ImageParsingMethod,
     ImageTypes,
     TextData,
-    TextParsingMethod
+    TextParsingMethod,
 )
 from mediawiki_dump.entry import DumpEntry
 from utils import check_extension, make_par_id
-
 
 CLIP_ENDPOINT = "http://195.70.199.13:8765/embed/images/base64"
 TEXT_ENDPOINT = "http://195.70.199.13:8766/embed/texts"
@@ -25,18 +24,17 @@ HEADERS = {"Content-Type": "application/json"}
 
 
 class Enrichment(ABC):
+    @abstractmethod
     def __init__(self):
         pass
 
     @abstractmethod
-    def enrich(self, data: List[str], doc: DocBuilder) -> None:
-        raise NotImplementedError()
+    def enrich(self, doc: DocBuilder) -> None:
+        raise NotImplementedError
 
 
 class WebEnrichment(Enrichment, ABC):
     def __init__(self, endpoint: str, headers: Dict[str, str]):
-        super().__init__()
-
         self.endpoint = endpoint
         self.headers = headers
 
@@ -51,10 +49,7 @@ class WebEnrichment(Enrichment, ABC):
             return
 
         resp = requests.post(
-            self.endpoint,
-            headers=self.headers,
-            json=values,
-            timeout=60,
+            self.endpoint, headers=self.headers, json=values, timeout=60
         ).content
         results = self.__class__.parse(resp)
 
@@ -70,17 +65,17 @@ class WebEnrichment(Enrichment, ABC):
     @staticmethod
     @abstractmethod
     def prepare(doc: DocBuilder) -> Tuple[List[str], List[str]]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @staticmethod
     @abstractmethod
     def parse(data: bytes) -> List[Any]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @staticmethod
     @abstractmethod
     def emplace(doc: DocBuilder, keys: List[str], results: List[Any]) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class CLIPEnrichment(WebEnrichment):
@@ -89,8 +84,12 @@ class CLIPEnrichment(WebEnrichment):
         if not doc.images:
             return [], []
 
-        crc64s, images_data = list(zip(*doc.images.items()))
-        images = [image_data.data for image_data in images_data]
+        crc64s, images_data = cast(
+            Tuple[List[str], List[ImageData]],
+            list(zip(*doc.images.items(), strict=False)),
+        )
+        # abscence of None values should be guaranteed beforehand
+        images = [cast(str, image_data.data) for image_data in images_data]
         return crc64s, images
 
     @staticmethod
@@ -102,9 +101,11 @@ class CLIPEnrichment(WebEnrichment):
         if doc.images is None:
             return
 
-        for crc64, embedding in zip(keys, results):
+        for crc64, embedding in zip(keys, results, strict=False):
             doc.images[crc64].data = None
-            doc.images[crc64].embedding = [round(val, ndigits=7) for val in cast(List[float], embedding)]
+            doc.images[crc64].embedding = [
+                round(val, ndigits=7) for val in cast(List[float], embedding)
+            ]
 
 
 class TextEnrichment(WebEnrichment):
@@ -113,7 +114,10 @@ class TextEnrichment(WebEnrichment):
         if not doc.contents:
             return [], []
 
-        ids, texts_data = list(zip(*doc.contents.items()))
+        ids, texts_data = cast(
+            Tuple[List[str], List[TextData]],
+            list(zip(*doc.contents.items(), strict=False)),
+        )
         texts = [text_data.text for text_data in texts_data]
         return ids, texts
 
@@ -126,8 +130,10 @@ class TextEnrichment(WebEnrichment):
         if doc.contents is None:
             return
 
-        for idx, embedding in zip(keys, results):
-            doc.contents[idx].embedding = [round(val, ndigits=7) for val in cast(List[float], embedding)]
+        for idx, embedding in zip(keys, results, strict=False):
+            doc.contents[idx].embedding = [
+                round(val, ndigits=7) for val in cast(List[float], embedding)
+            ]
 
 
 class DocBuilder:
@@ -150,7 +156,7 @@ class DocBuilder:
         image_method: ImageParsingMethod = ImageParsingMethod.WithImagesOnlyRaw,
         text_method: TextParsingMethod = TextParsingMethod.WithTextsOnlyRaw,
         image_types: ImageTypes = ImageTypes.OnlyCommonTypes,
-        max_image_size: int = 0
+        max_image_size: int = 0,
     ) -> DocBuilder:
         doc = DocBuilder()
         doc.doc_id = entry.page_id
@@ -185,14 +191,11 @@ class DocBuilder:
 
         if image_method in (
             ImageParsingMethod.WithImagesOnlyEmbeddings,
-            ImageParsingMethod.WithImagesRawAndEmbeddings
+            ImageParsingMethod.WithImagesRawAndEmbeddings,
         ):
             try:
                 clip_start_time = time.time()
-                CLIPEnrichment(
-                    endpoint=CLIP_ENDPOINT,
-                    headers=HEADERS
-                ).enrich(doc)
+                CLIPEnrichment(endpoint=CLIP_ENDPOINT, headers=HEADERS).enrich(doc)
 
                 clip_finish_time = time.time()
                 logging.info(
@@ -203,24 +206,21 @@ class DocBuilder:
                 if image_method == ImageParsingMethod.WithImagesOnlyEmbeddings:
                     for image in doc.images.values():
                         image.data = None
-            except Exception:  # noqa: BLE001
-                logging.exception(f"While applying CLIP")
+            except Exception:
+                logging.exception("While applying CLIP")
 
         if text_method == TextParsingMethod.WithTextsWithEmbeddings:
             try:
                 text_start_time = time.time()
-                TextEnrichment(
-                    endpoint=TEXT_ENDPOINT,
-                    headers=HEADERS
-                ).enrich(doc)
+                TextEnrichment(endpoint=TEXT_ENDPOINT, headers=HEADERS).enrich(doc)
 
                 text_finish_time = time.time()
                 logging.info(
                     f"Request to text model server took "
                     f"{text_finish_time - text_start_time:.2f}s"
                 )
-            except Exception:  # noqa: BLE001
-                logging.exception(f"While applying text model")
+            except Exception:
+                logging.exception("While applying text model")
 
         return doc
 
@@ -246,7 +246,7 @@ class DocBuilder:
                     {
                         "content_id": par_id,
                         "content": text.text,
-                        "embedding": text.embedding
+                        "embedding": text.embedding,
                     }
                     for par_id, text in self.contents.items()
                 ]
@@ -259,10 +259,7 @@ class DocBuilder:
                         "crc64": crc64,
                         "image": image.data,
                         "embedding": image.embedding,
-                        "metadata": {
-                            "title": image.title,
-                            "description": image.desc
-                        },
+                        "metadata": {"title": image.title, "description": image.desc},
                     }
                     for crc64, image in self.images.items()
                 ]

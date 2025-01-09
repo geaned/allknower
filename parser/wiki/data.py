@@ -75,7 +75,7 @@ class ImageData:
 
 @dataclass
 class TextData:
-    text: Optional[str]
+    text: str
     embedding: Optional[List[float]]
 
 
