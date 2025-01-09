@@ -20,19 +20,21 @@ DOWNLOAD_HEADERS = {
 }
 
 
-class ParsingMethod(Enum):
-    WithImages = 1
-    WithoutImages = 2
+class ImageParsingMethod(Enum):
+    WithImagesOnlyRaw = 1
+    WithImagesOnlyEmbeddings = 2
+    WithImagesRawAndEmbeddings = 3
+    WithoutImages = 4
+
+
+class TextParsingMethod(Enum):
+    WithTextsOnlyRaw = 1
+    WithTextsWithEmbeddings = 2
 
 
 class ImageTypes(Enum):
     OnlyCommonTypes = 1
     AllTypes = 2
-
-
-class ImageResult(Enum):
-    Image = 1
-    Embedding = 2
 
 
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
@@ -66,9 +68,15 @@ def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> b
 class ImageData:
     title: str
     data: Optional[str]  # base64 encoded
-    embedding: Optional[List[float]]  # CLIP embedding
+    embedding: Optional[List[float]]
     crc64: str
     desc: str
+
+
+@dataclass
+class TextData:
+    text: Optional[str]
+    embedding: Optional[List[float]]
 
 
 class ContentData:
@@ -96,7 +104,7 @@ class ContentData:
         self.images: List[Tuple[str, str]] = []
         self.text = self.__parse(s)
 
-    def __parse(self, s: str):  # noqa: PLR0912
+    def __parse(self, s: str) -> TextData:  # noqa: PLR0912
         nodes = mwparserfromhell.parse(s).nodes
         filtered: List[
             Union[
@@ -170,7 +178,7 @@ class ContentData:
         if result.startswith("REDIRECT"):
             self.redirect = True
 
-        return result
+        return TextData(result, None)
 
     def __parse_reduced(self, nodes: List[mwparserfromhell.nodes._base.Node]) -> str:
         filtered: List[
@@ -202,14 +210,14 @@ class ContentData:
         return self.categories
 
     def get_images(
-        self, method=ParsingMethod.WithImages, max_image_size: int = 0
+        self, method=ImageParsingMethod.WithImagesOnlyRaw, max_image_size: int = 0
     ) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError("Cannot reduce image dimensions to a negative values")
 
         image_data: List[ImageData] = []
 
-        if method == ParsingMethod.WithoutImages:
+        if method == ImageParsingMethod.WithoutImages:
             # return mocked images
             for title, description in self.images:
                 image_data.append(self.__make_mock_image(title, description))

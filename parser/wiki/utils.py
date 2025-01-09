@@ -58,10 +58,10 @@ def parse_args() -> argparse.Namespace:
         help="Parse a document with a certain title (used in single mode)",
     )
     parser.add_argument(
-        "--mock-images",
+        "--no-images",
         action="store_true",
-        help="Write placeholders instead of actual images (substantally increases "
-        "performance)",
+        help="Restrain from writing actual images to output (substantally increases "
+        "performance if CLIP is not used)",
     )
     parser.add_argument(
         "--num-workers",
@@ -89,6 +89,12 @@ def parse_args() -> argparse.Namespace:
         "--use-clip",
         action="store_true",
         help="Use a hardcoded endpoint to retrieve CLIP embeddings and return "
+        "them with raw images",
+    )
+    parser.add_argument(
+        "--use-text-model",
+        action="store_true",
+        help="Use a hardcoded endpoint to retrieve text model embeddings and return "
         "them instead of raw images",
     )
     parser.add_argument(
@@ -104,7 +110,7 @@ def parse_args() -> argparse.Namespace:
         "--start-id",
         type=int,
         default=0,
-        help="Skip all pages with IDs less than the passed value " "(stream mode only)",
+        help="Skip all pages with IDs less than the passed value (stream mode only)",
     )
 
     return parser.parse_args()
