@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import time
+from functools import partial
 from multiprocessing import Manager, Pool, Process, Queue
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, cast
 
 from data import ImageParsingMethod, ImageTypes, TextParsingMethod
 from doc import DocBuilder
@@ -18,7 +20,7 @@ from writer import write_messages_file, write_messages_kafka
 
 def parse_entry(  # noqa: PLR0913
     entry: DumpEntry,
-    queue: Optional[Queue],
+    queue: Optional[Queue[Any]] = None,
     image_method: ImageParsingMethod = ImageParsingMethod.WithImagesOnlyRaw,
     text_method: TextParsingMethod = TextParsingMethod.WithTextsOnlyRaw,
     image_types: ImageTypes = ImageTypes.OnlyCommonTypes,
@@ -26,7 +28,11 @@ def parse_entry(  # noqa: PLR0913
     output_dir: Optional[str] = None,
     output_file: Optional[str] = None,
     log_dir: str = ".",
-):
+    start_index: int = 0,
+) -> None:
+    if entry.page_id < start_index:
+        return
+
     logging.basicConfig(
         level=logging.INFO,
         filename=Path(log_dir, f"output_{os.getpid()}.log"),
@@ -52,6 +58,7 @@ def parse_entry(  # noqa: PLR0913
 
     if queue is None:
         with open(output_file, "w") as result:
+            # intent set for readability purposes during testing
             json.dump(doc.as_dict(), result, ensure_ascii=False, indent=4)
         return
 
@@ -62,20 +69,13 @@ def parse_entry(  # noqa: PLR0913
     queue.put(
         (
             entry.page_id,
-            Path(output_dir, output_file),
+            Path(output_dir, output_file).as_posix(),
             json.dumps(doc.as_dict(), ensure_ascii=False),
         )
     )
 
 
-def write_from_queue(q: Queue):
-    while True:
-        dump, file_name = q.get()
-        with open(file_name, "w") as result:
-            result.write(dump)
-
-
-def main(args):  # noqa: PLR0912, PLR0915
+def main(args) -> None:  # noqa: PLR0912, PLR0915
     file_name: str = args.file
     mode: str = args.mode
     title: str = args.title
@@ -114,7 +114,7 @@ def main(args):  # noqa: PLR0912, PLR0915
     match mode:
         case "stream":
             m = Manager()
-            parsed_queue = m.Queue(maxsize=1)
+            parsed_queue = cast(Queue, m.Queue(maxsize=1))
 
             match output_mode:
                 case "file":
@@ -139,25 +139,31 @@ def main(args):  # noqa: PLR0912, PLR0915
                     )
 
             with Pool(processes=num_workers) as pool:
-                for entry in reader.read(dump):
-                    if entry.page_id < start_id:
-                        continue
-                    pool.apply_async(
-                        parse_entry,
-                        (
-                            entry,
-                            parsed_queue,
-                            image_method,
-                            text_method,
-                            image_types,
-                            max_image_size,
-                            output_dir,
-                            None,
-                            log_dir,
+                try:
+                    pool.imap_unordered(
+                        partial(
+                            parse_entry,
+                            queue=parsed_queue,
+                            image_method=image_method,
+                            text_method=text_method,
+                            image_types=image_types,
+                            max_image_size=max_image_size,
+                            output_dir=output_dir,
+                            log_dir=log_dir,
+                            start_index=start_id,
                         ),
+                        reader.read(dump),
                     )
-
-                pool.join()
+                    pool.close()
+                    pool.join()
+                except EOFError:
+                    sys.stdout.write(
+                        "End of dump file encountered, gracefully stopping...\n"
+                    )
+                except KeyboardInterrupt:
+                    sys.stdout.write(
+                        "Interrupted from keyboard, gracefully stopping...\n"
+                    )
 
         case "single":
             if output_mode == "kafka":
@@ -168,21 +174,29 @@ def main(args):  # noqa: PLR0912, PLR0915
             if title is None:
                 raise ValueError("Title is required in single mode")
 
-            for entry in reader.read(dump):
-                if entry.title == title:
-                    break
+            try:
+                for entry in reader.read(dump):
+                    if entry.title == title:
+                        break
 
-            parse_entry(
-                entry,
-                None,
-                image_method,
-                text_method,
-                image_types,
-                max_image_size,
-                None,
-                output_file,
-                log_dir,
-            )
+                parse_entry(
+                    entry,
+                    image_method=image_method,
+                    text_method=text_method,
+                    image_types=image_types,
+                    max_image_size=max_image_size,
+                    output_file=output_file,
+                    log_dir=log_dir,
+                )
+            except EOFError:
+                sys.stdout.write(
+                    "End of dump file encountered, gracefully stopping...\n"
+                )
+            except KeyboardInterrupt:
+                sys.stdout.write(
+                    "Interrupted execution from keyboard, gracefully stopping...\n"
+                )
+                return
 
         case _:
             raise ValueError(f"Unsupported mode {{{mode}}} passed")

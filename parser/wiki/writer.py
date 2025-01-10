@@ -23,7 +23,7 @@ def write_messages_file(queue: Queue, log_dir: str = "."):
             with open(path, "w") as result:
                 result.write(msg)
         except Exception as e:  # noqa: BLE001
-            logging.error(f"While writing to file: {str(e)}")
+            logging.error(f"While writing page {page_id} to file: {str(e)}")
 
 
 def write_messages_kafka(queue: Queue, log_dir: str, config: Dict[str, Any]):
@@ -64,5 +64,5 @@ def write_messages_kafka(queue: Queue, log_dir: str, config: Dict[str, Any]):
         try:
             producer.produce(config["topic"], value=msg, callback=delivery_report)
         except Exception as e:  # noqa: BLE001
-            logging.error(f"While writing to {config['topic']}: {e}")
+            logging.error(f"While writing page {page_id} to {config['topic']}: {e}")
         producer.flush()

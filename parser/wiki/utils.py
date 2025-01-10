@@ -191,3 +191,10 @@ def get_corrected_dimensions(w: int, h: int, max_image_size: int) -> Tuple[int, 
         int(w / reduction_ratio), int(h / reduction_ratio)
     )
     return round(w / reduction_ratio_corr), round(h / reduction_ratio_corr)
+
+
+def check_multiple_image_param_name(s: str) -> bool:
+    if not s.startswith("image"):
+        return False
+
+    return s.replace("image", "", 1).isdigit()

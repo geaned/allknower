@@ -12,7 +12,12 @@ import regex
 import requests
 from crc64iso.crc64iso import crc64
 from PIL import Image
-from utils import check_extension, get_corrected_dimensions, parse_as_of_template
+from utils import (
+    check_extension,
+    check_multiple_image_param_name,
+    get_corrected_dimensions,
+    parse_as_of_template,
+)
 
 DOWNLOAD_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -129,8 +134,27 @@ class ContentData:
                         continue
 
                     for param in node.params:
-                        if param.name.strip() == "image":
-                            self.images.append((param.value.strip(), ""))
+                        if param.name.strip().lower() == "image":
+                            multiple_image = False
+                            # for multiple image templates
+                            for subnode in param.value.nodes:
+                                if (
+                                    isinstance(subnode, mwparserfromhell.nodes.Template)
+                                    and str(subnode.name).strip().lower()
+                                    == "multiple image"
+                                ):
+                                    multiple_image = True
+                                    for subparam in subnode.params:
+                                        if check_multiple_image_param_name(
+                                            subparam.name.strip()
+                                        ):
+                                            self.images.append(
+                                                (subparam.value.strip(), "")
+                                            )
+
+                            # or consider it to be a basic image
+                            if not multiple_image:
+                                self.images.append((param.value.strip(), ""))
 
                 case mwparserfromhell.nodes.ExternalLink:
                     filtered.append(node.title)
@@ -140,7 +164,6 @@ class ContentData:
                         filtered.append(
                             str(node.contents).replace("[[", "").replace("]]", "")
                         )
-                    continue
 
                 case mwparserfromhell.nodes.Wikilink:
                     if node.title.startswith("File:"):
