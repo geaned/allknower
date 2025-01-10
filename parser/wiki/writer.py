@@ -39,23 +39,24 @@ def write_messages_kafka(queue: Queue, log_dir: str, config: Dict[str, Any]):
         {
             "bootstrap.servers": bootstrap_servers,
             "client.id": config["client_id"],
-            "message.max.bytes": config["max_message_size"]
+            "message.max.bytes": config["max_message_size"],
         }
     )
     producer = Producer(
         {
             "bootstrap.servers": bootstrap_servers,
             "client.id": config["client_id"],
-            "message.max.bytes": config["max_message_size"]
+            "message.max.bytes": config["max_message_size"],
         }
     )
     topic = NewTopic(
-        config["topic"], config={
+        config["topic"],
+        config={
             "max.request.size": config["max_message_size"],
             "replica.fetch.max.bytes": config["max_message_size"],
             "message.max.bytes": config["max_message_size"],
             "max.message.bytes": config["max_message_size"],
-        }
+        },
     )
     admin_client.create_topics([topic])
 
