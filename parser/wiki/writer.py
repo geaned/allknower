@@ -17,7 +17,7 @@ def write_messages_file(queue: Queue, log_dir: str = "."):
 
     while True:
         page_id, path, msg = queue.get()
-        logging.info(f"Writing page {page_id}")
+        logging.info(f"Writing page {page_id} (size {len(msg)})")
 
         try:
             with open(path, "w") as result:
@@ -36,30 +36,39 @@ def write_messages_kafka(queue: Queue, log_dir: str, config: Dict[str, Any]):
 
     bootstrap_servers = ",".join(config["bootstrap_servers"])
     admin_client = AdminClient(
-        {"bootstrap.servers": bootstrap_servers, "client.id": config["client_id"]}
+        {
+            "bootstrap.servers": bootstrap_servers,
+            "client.id": config["client_id"],
+            "message.max.bytes": config["max_message_size"]
+        }
     )
     producer = Producer(
         {
             "bootstrap.servers": bootstrap_servers,
             "client.id": config["client_id"],
-            "message.max.bytes": config["max_message_size"],
+            "message.max.bytes": config["max_message_size"]
         }
     )
     topic = NewTopic(
-        config["topic"], config={"max.message.bytes": config["max_message_size"]}
+        config["topic"], config={
+            "max.request.size": config["max_message_size"],
+            "replica.fetch.max.bytes": config["max_message_size"],
+            "message.max.bytes": config["max_message_size"],
+            "max.message.bytes": config["max_message_size"],
+        }
     )
     admin_client.create_topics([topic])
 
     def delivery_report(err, msg):
         if err is not None:
             logging.error(
-                f"While writing to {msg.topic()} [{msg.partition()}] "
+                f"While writing page {page_id} to {msg.topic()} [{msg.partition()}] "
                 f"(via callback): {err}"
             )
 
     while True:
         page_id, _, msg = queue.get()
-        logging.info(f"Writing page {page_id}")
+        logging.info(f"Writing page {page_id} (size {len(msg)})")
 
         try:
             producer.produce(config["topic"], value=msg, callback=delivery_report)
