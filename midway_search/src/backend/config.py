@@ -5,6 +5,17 @@ from pydantic_settings import (
 )
 
 
+class QueryEmbedderAPIConfig(BaseSettings):
+    text_embedder_endpoint: str = "http://195.70.199.13:8766/embed/texts"
+    image_embedder_endpoint: str = "http://195.70.199.13:8765/embed/texts"
+
+
+class BaseSearchAPIConfig(BaseSettings):
+    base_url: str = "http://0.0.0.0:7867"
+    full_text_search_enpoint: str = "full_text_search"
+    vector_search_endpoint: str = "vector_search"
+
+
 class PrometheusMetricsConfig(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8090
@@ -15,7 +26,9 @@ class MidwaySearchBackendConfig(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 7866
     prometheus: PrometheusMetricsConfig
-    basesearch_endpoint: str = "http://0.0.0.0:7867/get_documents"
+    query_embedder: QueryEmbedderAPIConfig
+    basesearch: BaseSearchAPIConfig
+    blender_api_enpoint: str
 
     model_config = SettingsConfigDict(
         env_prefix="MIDWAY_SEARCH_BACKEND__",
