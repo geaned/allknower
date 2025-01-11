@@ -6,36 +6,26 @@ import document.Content
 import document.Image
 import document.WikiDocument
 import index.Indexer
-import org.apache.lucene.analysis.Analyzer
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents
-import org.apache.lucene.analysis.LowerCaseFilter
-import org.apache.lucene.analysis.TokenStream
-import org.apache.lucene.analysis.Tokenizer
-import org.apache.lucene.analysis.ngram.NGramTokenizer
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import search.Searcher
 import java.io.File
-import java.io.StringReader
-import org.apache.lucene.analysis.en.PorterStemFilter
-import search.TermExtractor
 
 
-const val INDEX_DIR = "index/v1"
-const val DOCUMENTS_FILE = "src/main/resources/books.json"
+const val INDEX_DIR = "index/v2"
+const val DOCUMENTS_FILE = "src/main/resources/wikir_en78k.json"
 
 fun main() {
     val indexFile = File(INDEX_DIR)
+
     if (indexFile.exists()) {
         indexFile.deleteRecursively()
         println("Directory deleted successfully.")
     }
-
     val indexer = Indexer(indexFile)
     buildIndex(indexer)
 
     val searcher = Searcher(fileIndex = indexFile)
 
-    val query = "безруков"
+    val query = "Alabama"
     val topDocs = searcher.SearchDocuments(query)
 
     println(
@@ -53,56 +43,53 @@ fun buildIndex(indexer: Indexer) {
     indexer.UpdateIndex(documents)
 }
 
-class CustomNGramAnalyzer(private val minGram: Int, private val maxGram: Int) : Analyzer() {
-    override fun createComponents(fieldName: String): TokenStreamComponents {
-        // Создаем NGramTokenizer с заданными minGram и maxGram
-        val tokenizer: Tokenizer = NGramTokenizer(minGram, maxGram)
-
-        // Пропускаем токены через необходимые фильтры
-        var tokenStream: TokenStream = LowerCaseFilter(tokenizer) // Приведение к нижнему регистру
-        tokenStream = PorterStemFilter(tokenStream)               // Стемминг (алгоритм Портера)
-
-        // Возвращаем цепочку компонентов
-        return TokenStreamComponents(tokenizer, tokenStream)
-    }
-}
+//class CustomNGramAnalyzer(private val minGram: Int, private val maxGram: Int) : Analyzer() {
+//    override fun createComponents(fieldName: String): TokenStreamComponents {
+//        val tokenizer: Tokenizer = NGramTokenizer(minGram, maxGram)
+//
+//        var tokenStream: TokenStream = LowerCaseFilter(tokenizer)
+//        tokenStream = PorterStemFilter(tokenStream)
+//
+//        return TokenStreamComponents(tokenizer, tokenStream)
+//    }
+//}
 
 // Функция для тестирования анализатора
-fun analyzeText(analyzer: Analyzer, text: String) {
-    analyzer.tokenStream("field", StringReader(text)).use { tokenStream ->
-        val charTermAttribute = tokenStream.getAttribute(CharTermAttribute::class.java)
-        tokenStream.reset()
+//fun analyzeText(analyzer: Analyzer, text: String) {
+//    analyzer.tokenStream("field", StringReader(text)).use { tokenStream ->
+//        val charTermAttribute = tokenStream.getAttribute(CharTermAttribute::class.java)
+//        tokenStream.reset()
+//
+//        // Выводим каждый токен (n-грамму) после обработки
+//        while (tokenStream.incrementToken()) {
+//            println(charTermAttribute.toString())
+//        }
+//
+//        tokenStream.end()
+//    }
+//}
 
-        // Выводим каждый токен (n-грамму) после обработки
-        while (tokenStream.incrementToken()) {
-            println(charTermAttribute.toString())
-        }
+//fun generateNGrams(text: String) {
+//    val analyzer = CustomNGramAnalyzer(2, 3)  // Создаем анализатор для n-грамм длиной от 2 до 3 символов
+//
+//    // Анализируем текст
+//    println("Analyzed tokens:")
+//    analyzeText(analyzer, text)
+//}
 
-        tokenStream.end()
-    }
-}
-
-fun generateNGrams(text: String) {
-    val analyzer = CustomNGramAnalyzer(2, 3)  // Создаем анализатор для n-грамм длиной от 2 до 3 символов
-
-    // Анализируем текст
-    println("Analyzed tokens:")
-    analyzeText(analyzer, text)
-}
-
-fun getNGrams(text: String): List<String> {
-    val ngramTokenizer = NGramTokenizer(2, 3)
-    ngramTokenizer.setReader(StringReader(text))
-
-    ngramTokenizer.reset()
-
-    val ngrams = mutableListOf<String>()
-    while (ngramTokenizer.incrementToken()) {
-        ngrams.add(ngramTokenizer.getAttribute(CharTermAttribute::class.java).toString())
-    }
-
-    return ngrams
-}
+//fun getNGrams(text: String): List<String> {
+//    val ngramTokenizer = NGramTokenizer(2, 3)
+//    ngramTokenizer.setReader(StringReader(text))
+//
+//    ngramTokenizer.reset()
+//
+//    val ngrams = mutableListOf<String>()
+//    while (ngramTokenizer.incrementToken()) {
+//        ngrams.add(ngramTokenizer.getAttribute(CharTermAttribute::class.java).toString())
+//    }
+//
+//    return ngrams
+//}
 
 fun  generateJson() {
     val document = WikiDocument(

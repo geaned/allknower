@@ -2,30 +2,26 @@ package search
 import color.Color
 import color.PrintColorizer
 import org.apache.lucene.analysis.en.EnglishAnalyzer
-import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.index.IndexReader
-import org.apache.lucene.index.Term
 import org.apache.lucene.queryparser.classic.QueryParser
-import org.apache.lucene.search.*
+import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.Query
+import org.apache.lucene.search.TopDocs
 import org.apache.lucene.search.similarities.BM25Similarity
 import org.apache.lucene.search.similarities.ClassicSimilarity
 import org.apache.lucene.store.NIOFSDirectory
-//import org.example.search.HHProximityScorer
-//import org.example.search.ProximityQuery
+import org.example.search.HHProximityQueryV2
 import java.io.File
 
 
 class Searcher(
     val fileIndex: File,
     val searchField: String = "content",
-    val idField: String = "doc_id",
-    maxTokenCount: Int = 10000,
     ) {
     private val defaultOperator: QueryParser.Operator = QueryParser.OR_OPERATOR
 
-    val analyzer = LimitTokenCountAnalyzer(EnglishAnalyzer(), maxTokenCount)
+    val analyzer = EnglishAnalyzer()
     val directory = NIOFSDirectory(fileIndex.toPath())
 
     val termExtractor = TermExtractor()
@@ -60,10 +56,8 @@ class Searcher(
         val l0Hits = l0TopDocs.scoreDocs
         val docIds = l0Hits.map { it.doc }.toList()
 
-//        val proximityQuery = ProximityQuery(terms)
-
-        val l1TopDocs = l1Search(reader, queryObj, docIds)
-//        val l1TopDocs = l1Search(reader, proximityQuery, docIds)
+        val proximityQuery = HHProximityQueryV2(terms, docIds)
+        val l1TopDocs = l1Search(reader, proximityQuery, docIds)
 
         println(
             PrintColorizer().ColorizeForeground(
@@ -75,7 +69,7 @@ class Searcher(
             val tfidfScore = l0TopDocs.scoreDocs.find { scoreDoc -> scoreDoc.doc == it.doc }?.score
             println("Doc: ${reader.storedFields().document(it.doc).getField("title").stringValue()}\n" +
                     "TFIDF Score: ${tfidfScore}\n" +
-                    "BM25 Score: ${it.score}\n")
+                    "Final Score: ${it.score}\n")
         }
 
         reader.close()
@@ -94,22 +88,22 @@ class Searcher(
         val l1Searcher = IndexSearcher(reader)
         l1Searcher.similarity = BM25Similarity()
 
-        // Создаем TermsQuery для поиска только по документам из фазы L0
-        val termQuery = BooleanQuery.Builder().apply {
-            val storedFields = reader.storedFields()
-            docIds.forEach { docId ->
-                val storedDocId = storedFields.document(docId).getField(idField).stringValue()
-                val term = Term(idField, storedDocId)  // Предполагаем, что idField содержит ID документа
-                add(TermQuery(term), BooleanClause.Occur.SHOULD)
-            }
-        }.build()
+//        // Создаем TermsQuery для поиска только по документам из фазы L0
+//        val termQuery = BooleanQuery.Builder().apply {
+//            val storedFields = reader.storedFields()
+//            docIds.forEach { docId ->
+//                val storedDocId = storedFields.document(docId).getField(idField).stringValue()
+//                val term = Term(idField, storedDocId)  // Предполагаем, что idField содержит ID документа
+//                add(TermQuery(term), BooleanClause.Occur.SHOULD)
+//            }
+//        }.build()
+//
+//        val combinedQuery = BooleanQuery.Builder()
+//            .add(query, BooleanClause.Occur.MUST)
+//            .add(termQuery, BooleanClause.Occur.FILTER)
+//            .build()
 
-        val combinedQuery = BooleanQuery.Builder()
-            .add(query, BooleanClause.Occur.MUST)
-            .add(termQuery, BooleanClause.Occur.FILTER)
-            .build()
-
-        return l1Searcher.search(combinedQuery, 1_000)
+        return l1Searcher.search(query, 1_000)
     }
 
     fun PrintResults(searchResult: TopDocs) {
@@ -134,7 +128,7 @@ class Searcher(
 
             println(
                 PrintColorizer().Colorize(
-                    "${table["doc_id"]}: \"${table["title"]}\". Score: ${scoreDoc.score}",
+                    "${table["doc_id"]}: \"${table["title"]}\". Score: ${scoreDoc.score}. DocID at index: ${scoreDoc.doc}",
                     Color.GREEN,
                 )
             )
