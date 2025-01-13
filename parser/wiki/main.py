@@ -14,7 +14,7 @@ from data import ImageParsingMethod, ImageTypes, TextParsingMethod
 from doc import DocBuilder
 from mediawiki_dump.entry import DumpEntry
 from mediawiki_dump.reader import DumpReader
-from utils import make_mediawiki_stream, parse_args
+from utils import is_title_appropriate, make_mediawiki_stream, parse_args
 from writer import write_messages_file, write_messages_kafka
 
 
@@ -39,6 +39,10 @@ def parse_entry(  # noqa: PLR0913
         filemode="a",
         format="%(asctime)s %(levelname)s %(message)s",
     )
+
+    if not is_title_appropriate(entry.title):
+        logging.info(f"Skipping page {entry.page_id}: {entry.title}")
+        return
 
     start_time = time.time()
     logging.info(f"Working on page {entry.page_id}: {entry.title}")

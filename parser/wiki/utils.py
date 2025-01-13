@@ -198,3 +198,20 @@ def check_multiple_image_param_name(s: str) -> bool:
         return False
 
     return s.replace("image", "", 1).isdigit()
+
+
+def is_title_appropriate(title: str) -> bool:
+    return not any(
+        title.replace(": ", "").startswith(x)
+        for x in (
+            "Wikipedia:",
+            "Portal:",
+            "Draft:",
+            "File:",
+            "Help:",
+            "Template:",
+            "MediaWiki:",
+            "Category:",
+            "Module:",
+        )
+    )
