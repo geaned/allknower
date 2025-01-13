@@ -1,10 +1,10 @@
 index_directory: "index/v4"
 
-document_topic: "wikir_documents"
+document_topic: "wiki-parsed"
 
 consumer:
   bootstrap_servers: "localhost:9091,localhost:9092,localhost:9093"
-  group_id: "wikir-consumer"
+  group_id: "allknower-indexer"
   poll_duration_millis: 10000
   delay_period_millis: 10000
   max_document_batch: 250000

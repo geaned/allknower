@@ -33,12 +33,15 @@ class DocumentConsumer(
 
             for (message: ConsumerRecord<String, String> in messages) {
                 val document = WikiDocument.fromJson(message.value())
-                documentsToIndex.add(document)
+                if (!document.redirect) {
+                    documentsToIndex.add(document)
+                }
             }
 
             val duration = Duration.between(lastTimeCommit, Instant.now())
             if ((documentsToIndex.count() >= cfg.maxDocumentBatch) || (duration > cfg.batchDurationSeconds.duration().toJavaDuration())) {
                 if (documentsToIndex.isEmpty()) {
+                    logger.warn { "Empty list of documents for indexing" }
                     continue
                 }
 

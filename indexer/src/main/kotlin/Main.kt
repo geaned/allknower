@@ -41,7 +41,8 @@ suspend fun documentIndexing(
     indexer: Indexer,
 ) {
     for (documents in documentsChannel) {
-        logger.info { "Read from channel ${documents.size} documents" }
+        logger.info { "Read from channel ${documents.size} documents." }
+
         indexer.updateIndex(documents)
     }
 }
