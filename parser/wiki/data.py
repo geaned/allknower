@@ -12,7 +12,12 @@ import regex
 import requests
 from crc64iso.crc64iso import crc64
 from PIL import Image
-from utils import check_extension, get_corrected_dimensions, parse_as_of_template
+from utils import (
+    check_extension,
+    check_multiple_image_param_name,
+    get_corrected_dimensions,
+    parse_as_of_template,
+)
 
 DOWNLOAD_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -20,19 +25,21 @@ DOWNLOAD_HEADERS = {
 }
 
 
-class ParsingMethod(Enum):
-    WithImages = 1
-    WithoutImages = 2
+class ImageParsingMethod(Enum):
+    WithImagesOnlyRaw = 1
+    WithImagesOnlyEmbeddings = 2
+    WithImagesRawAndEmbeddings = 3
+    WithoutImages = 4
+
+
+class TextParsingMethod(Enum):
+    WithTextsOnlyRaw = 1
+    WithTextsWithEmbeddings = 2
 
 
 class ImageTypes(Enum):
     OnlyCommonTypes = 1
     AllTypes = 2
-
-
-class ImageResult(Enum):
-    Image = 1
-    Embedding = 2
 
 
 def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> bytes:
@@ -66,9 +73,15 @@ def parse_image_binary(raw_image: bytes, fmt: str, max_image_size: int = 0) -> b
 class ImageData:
     title: str
     data: Optional[str]  # base64 encoded
-    embedding: Optional[List[float]]  # CLIP embedding
+    embedding: Optional[List[float]]
     crc64: str
     desc: str
+
+
+@dataclass
+class TextData:
+    text: str
+    embedding: Optional[List[float]]
 
 
 class ContentData:
@@ -96,7 +109,7 @@ class ContentData:
         self.images: List[Tuple[str, str]] = []
         self.text = self.__parse(s)
 
-    def __parse(self, s: str):  # noqa: PLR0912
+    def __parse(self, s: str) -> TextData:  # noqa: PLR0912
         nodes = mwparserfromhell.parse(s).nodes
         filtered: List[
             Union[
@@ -121,8 +134,27 @@ class ContentData:
                         continue
 
                     for param in node.params:
-                        if param.name.strip() == "image":
-                            self.images.append((param.value.strip(), ""))
+                        if param.name.strip().lower() == "image":
+                            multiple_image = False
+                            # for multiple image templates
+                            for subnode in param.value.nodes:
+                                if (
+                                    isinstance(subnode, mwparserfromhell.nodes.Template)
+                                    and str(subnode.name).strip().lower()
+                                    == "multiple image"
+                                ):
+                                    multiple_image = True
+                                    for subparam in subnode.params:
+                                        if check_multiple_image_param_name(
+                                            subparam.name.strip()
+                                        ):
+                                            self.images.append(
+                                                (subparam.value.strip(), "")
+                                            )
+
+                            # or consider it to be a basic image
+                            if not multiple_image:
+                                self.images.append((param.value.strip(), ""))
 
                 case mwparserfromhell.nodes.ExternalLink:
                     filtered.append(node.title)
@@ -132,7 +164,6 @@ class ContentData:
                         filtered.append(
                             str(node.contents).replace("[[", "").replace("]]", "")
                         )
-                    continue
 
                 case mwparserfromhell.nodes.Wikilink:
                     if node.title.startswith("File:"):
@@ -170,7 +201,7 @@ class ContentData:
         if result.startswith("REDIRECT"):
             self.redirect = True
 
-        return result
+        return TextData(result, None)
 
     def __parse_reduced(self, nodes: List[mwparserfromhell.nodes._base.Node]) -> str:
         filtered: List[
@@ -202,14 +233,14 @@ class ContentData:
         return self.categories
 
     def get_images(
-        self, method=ParsingMethod.WithImages, max_image_size: int = 0
+        self, method=ImageParsingMethod.WithImagesOnlyRaw, max_image_size: int = 0
     ) -> List[ImageData]:
         if max_image_size < 0:
             raise ValueError("Cannot reduce image dimensions to a negative values")
 
         image_data: List[ImageData] = []
 
-        if method == ParsingMethod.WithoutImages:
+        if method == ImageParsingMethod.WithoutImages:
             # return mocked images
             for title, description in self.images:
                 image_data.append(self.__make_mock_image(title, description))

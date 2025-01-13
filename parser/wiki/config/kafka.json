@@ -1,10 +1,10 @@
 {
-    "topic": "wiki-parsed",
+    "topic": "wiki-parsed-v2",
     "client_id": "allknower-scrapper",
     "bootstrap_servers": [
         "localhost:9091",
         "localhost:9092",
         "localhost:9093"
     ],
-    "max_message_size": 33554432
+    "max_message_size": 67108864
 }
