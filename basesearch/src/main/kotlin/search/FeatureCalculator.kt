@@ -1,5 +1,7 @@
 package search
 
+import org.example.search.HHProximityQueryV2
+
 class FeatureCalculator {
     // Function to calculate n-gram coverage between query and document tokens
     private fun calculateQueryTokenNgramCoverage(queryTokens: List<String>, docTokens: List<String>, n: Int = 1): Pair<Int, Float> {
@@ -38,6 +40,8 @@ class FeatureCalculator {
     // Function to calculate features for a document
     fun calculateFeaturesByDoc(
         queryTokens: List<String>,
+        bm25Score: Float,
+        hhProximityScore: Float,
         docTokens: List<String>,
     ): List<Float> {
         val docLength = docTokens.size
@@ -55,8 +59,8 @@ class FeatureCalculator {
 
 
         return listOf(
-            0f, // Placeholder for BM25 score (implement if needed)
-            0f, // Placeholder for HHProximity score (implement if needed)
+            bm25Score,
+            hhProximityScore,
             queryTokens.size.toFloat(),
             docLength.toFloat(),
             unigramCoverageUnnormalized.toFloat(),

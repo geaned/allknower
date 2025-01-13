@@ -1,8 +1,1 @@
-index_directory: "index/v3"
-index_archive_file: "index/index.zip"
-
-s3:
-  region: "ru-central1"
-  endpoint_url: "https://storage.yandexcloud.net"
-  bucket: "allknower-search-index"
-  key: "index.zip"
+index_directory: "/Users/samikhajl3/Personal/InformationRetrievalCourse/allknower/indexer/index/v4"

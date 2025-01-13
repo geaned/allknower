@@ -35,7 +35,7 @@ class Searcher(
 
     val termExtractor = TermExtractor()
 
-    fun SearchDocuments(query: String): TopDocs {
+    fun searchDocuments(query: String): Pair<TopDocs, MutableList<List<Float>>?> {
         val reader = DirectoryReader.open(directory)
 
         val terms = termExtractor.ExtractTerms(searchField, query)
@@ -59,11 +59,11 @@ class Searcher(
         val l1TopDocs = filterTopDocsByScore(l1Search(reader, proximityQuery), 0.0f)
 
         // termsResults: docId -> (bm25, hhProximity)
-//        val features = calculateFeatures(reader, query, l1TopDocs, proximityQuery.termsResults)
+        val features = calculateFeatures(reader, query, l1TopDocs, proximityQuery.termsResults)
 
         reader.close()
 
-        return l1TopDocs
+        return Pair(l1TopDocs, features)
     }
 
     fun l0Search(reader: IndexReader, query: Query, topHitsSize: Int = 10_000): TopDocs {
@@ -89,7 +89,7 @@ class Searcher(
         )
     }
 
-    fun PrintResults(searchResult: TopDocs) {
+    fun printResults(searchResult: TopDocs) {
         val reader = DirectoryReader.open(directory)
 
         println(
@@ -159,7 +159,7 @@ class Searcher(
             println(storedFields.document(it.doc).fields)
             val document = storedFields.document(it.doc)
 
-            var docText = document.getField("title")?.stringValue()
+            var docText = document.getField("content")?.stringValue()
             if (docText.isNullOrBlank()) {
                 docText = ""
             }
@@ -174,8 +174,8 @@ class Searcher(
         val featureCalculator = FeatureCalculator()
         val features = mutableListOf<List<Float>>()
 
-        docsTokens.forEach {
-//            features.add(featureCalculator.calculateFeaturesByDoc(queryTokens, it))
+        docsTokens.forEachIndexed { index, it ->
+            features.add(featureCalculator.calculateFeaturesByDoc(queryTokens, bm25Scores[index], hhProximityScores[index], it))
         }
 
         val featuresStatistics = mutableListOf<Float>()
@@ -220,7 +220,6 @@ class Searcher(
             features[index] = selectedFeaturesIndices.mapNotNull { innerIndex ->
                 docFeatures.getOrNull(innerIndex)
             } + featuresStatistics + listOf(bm25ScoreScaled, hHProximityScore, bigramCoverageUnnormalizedScaled)
-
         }
 
         return features
