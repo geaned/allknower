@@ -1,5 +1,11 @@
 version: '3.7'
 services:
+  indexer:
+    build:
+      context: ./indexer/
+    network_mode: host
+    volumes:
+      - ./indexer/index:/app/index
   midway_search:
     build:
       context: ./midway_search/
