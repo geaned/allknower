@@ -1,3 +1,5 @@
+package search
+
 class FeatureCalculator {
     // Function to calculate n-gram coverage between query and document tokens
     private fun calculateQueryTokenNgramCoverage(queryTokens: List<String>, docTokens: List<String>, n: Int = 1): Pair<Int, Float> {

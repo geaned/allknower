@@ -1,7 +1,5 @@
 package org.example.search
 
-import color.Color
-import color.PrintColorizer
 import org.apache.lucene.index.*
 import org.apache.lucene.search.*
 import org.apache.lucene.search.similarities.ClassicSimilarity
@@ -14,6 +12,12 @@ class HHProximityQueryV2(
     private val docIDs: List<Int>,
     val z: Double = 1.75,
 ) : Query() {
+    val termsResults = mutableMapOf<Int, Pair<Float, Float>>()
+
+    fun setTermResults(docId: Int, bm25: Float, hhProximity: Float) {
+        termsResults[docId] = Pair(bm25, hhProximity)
+    }
+
     override fun equals(other: Any?): Boolean {
         return sameClassAs(other) && (other as HHProximityQueryV2).terms == terms
     }
@@ -67,66 +71,43 @@ class HHProximityWeightV2(
     override fun scorer(context: LeafReaderContext): Scorer? {
         val reader = context.reader()
 
-        val termsPositions = terms.mapNotNull { term ->
+        val termsStats = terms.mapNotNull { term ->
             reader.postings(term, PostingsEnum.POSITIONS.toInt())?.let { postings ->
+                val docsFreq = mutableMapOf<Int, Int>()
                 val docPositions = mutableMapOf<Int, List<Int>>()
-                while (postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
-                    val positions = mutableListOf<Int>()
-                    repeat(postings.freq()) {
-                        positions.add(postings.nextPosition())
+                for (docId in docIDs) {
+                    postings.advance(docId)
+                    if (postings.docID() == docId) {
+                        val positions = mutableListOf<Int>()
+                        repeat(postings.freq()) {
+                            positions.add(postings.nextPosition())
+                        }
+
+                        docPositions[postings.docID()] = positions
+                        docsFreq[postings.docID()] = postings.freq()
                     }
 
-                    docPositions[postings.docID()] = positions
+                    if (postings.docID() == PostingsEnum.NO_MORE_DOCS) {
+                        break
+                    }
                 }
-                term to docPositions
+
+                term to Pair(docsFreq, docPositions)
             }
         }.toMap()
 
-        if (termsPositions.isEmpty())
+        if (termsStats.isEmpty())
             return null
 
-        val termsPerDocFreq = terms.mapNotNull { term ->
-            reader.postings(term, PostingsEnum.FREQS.toInt())?.let { postings ->
-                val docsFreq = mutableMapOf<Int, Int>()
-                while (postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
-                    docsFreq[postings.docID()] = postings.freq()
-                }
-                term to docsFreq
-            }
+        val termsPerDocFreq = termsStats.map { (terms, pairStats) ->
+            terms to pairStats.first
+        }.toMap()
+        val termsPerDocPositions = termsStats.map { (terms, pairStats) ->
+            terms to pairStats.second
         }.toMap()
 
-        println(
-            PrintColorizer().ColorizeForeground(
-                PrintColorizer().Colorize(
-                    "Documents for Proximity: ${docIDs}",
-                    Color.BLACK,
-                ),
-                Color.YELLOW,
-            )
-        )
-        println(
-            PrintColorizer().ColorizeForeground(
-                PrintColorizer().Colorize(
-                    "TermsPositions: $termsPositions",
-                    Color.BLACK,
-                ),
-                Color.YELLOW,
-            )
-        )
-
-        reader.getNormValues(termsPerDocFreq.keys.first().field()).let { norms ->
-            while (norms.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-                println(
-                    PrintColorizer().Colorize(
-                        "Norm for document ${norms.docID()}: ${norms.longValue()}",
-                        Color.RED,
-                    )
-                )
-            }
-        }
-
         return HHProximityScorerV2(
-            this, docIDs.distinct().sorted(), termsPositions, termsPerDocFreq, reader, simScorer, z
+            this, docIDs.distinct().sorted(), termsPerDocFreq, termsPerDocPositions, reader, simScorer, z
         )
     }
 }
@@ -134,8 +115,8 @@ class HHProximityWeightV2(
 class HHProximityScorerV2(
     weight: Weight,
     private val docIDs: List<Int>,
-    private val termsPerDocPositions: Map<Term, MutableMap<Int, List<Int>>>,
     private val termsPerDocFreq: Map<Term, Map<Int, Int>>,
+    private val termsPerDocPositions: Map<Term, MutableMap<Int, List<Int>>>,
     private val reader: LeafReader,
     private val simScorer: SimScorer,
     private val z: Double
@@ -143,6 +124,10 @@ class HHProximityScorerV2(
     private val tfidfSimilarity = ClassicSimilarity()
 
     override fun score(): Float {
+        if (!docIDs.contains(docID())) {
+            return 0.0f
+        }
+
         var hhProximityScore = 0.0
         var bm25Score = 0.0
 
@@ -151,14 +136,11 @@ class HHProximityScorerV2(
             term to positions
         }.toMap()
 
-        println(
-            PrintColorizer().Colorize(
-                "TermPositions for document ${this.docID()}: $termPositions",
-                Color.YELLOW,
-            )
-        )
-
         for ((term, positions) in termPositions) {
+            if (positions.isEmpty()) {
+                continue
+            }
+
             var atc = 0.0
             for (pos in positions) {
                 val tc = termPositions.entries.sumOf { (otherTerm, otherPositions) ->
@@ -182,36 +164,15 @@ class HHProximityScorerV2(
 
             val norms = reader.getNormValues(term.field())
             norms.advance(docID())
-            bm25Score += simScorer.score((termsPerDocFreq[term]?.get(docID())?.toFloat() ?: 0) as Float, norms.longValue())
 
-            println(
-                PrintColorizer().Colorize(
-                    "Norm for document ${this.docID()} ? ${norms.docID()}: ${norms.longValue()}",
-                    Color.BLUE,
-                )
-            )
+            bm25Score += simScorer.score((termsPerDocFreq[term]?.get(docID())?.toFloat() ?: 0.0f), norms.longValue())
         }
 
         hhProximityScore = ln(1 + hhProximityScore)
 
-        println(
-            PrintColorizer().Colorize(
-                "HHProximity Score for document ${this.docID()}: $hhProximityScore",
-                Color.GREEN,
-            )
-        )
-        println(
-            PrintColorizer().Colorize(
-                "BM25 Score for document ${this.docID()}: $bm25Score",
-                Color.GREEN,
-            )
-        )
-        println(
-            PrintColorizer().Colorize(
-                "TermsFreq for document ${this.docID()}: $termsPerDocFreq",
-                Color.YELLOW,
-            )
-        )
+        if (bm25Score != 0.0 || hhProximityScore != 0.0) {
+            (weight.query as HHProximityQueryV2).setTermResults(docID(), bm25Score.toFloat(), hhProximityScore.toFloat())
+        }
 
         return (0.5 * bm25Score + 0.5 * hhProximityScore).toFloat()
     }
