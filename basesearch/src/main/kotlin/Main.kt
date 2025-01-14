@@ -83,6 +83,7 @@ fun runExperiment(app: App, type: String) {
             l1DiffTimings.add(searchResult.l1DiffTime.toMillis().toFloat())
         }
 
+        println()
         logger.info { "Current timings for query: $query: ${diff.toMillis()}" }
 
         logger.info { "STATS L0 (max, min, mean, median): ${calculateStatistics(l0DiffTimings)}" }
