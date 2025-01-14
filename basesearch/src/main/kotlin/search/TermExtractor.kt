@@ -14,15 +14,13 @@ class TermExtractor {
     fun extractTerms(fieldName: String, queryText: String): List<Term> {
         val terms = mutableListOf<Term>()
 
-//        val analyzer = object : Analyzer() {
-//            override fun createComponents(fieldName: String): TokenStreamComponents {
-//                val tokenizer = StandardTokenizer()
-//                val tokenStream = StopFilter(PorterStemFilter(LowerCaseFilter(tokenizer)), EnglishAnalyzer.getDefaultStopSet())
-//                return TokenStreamComponents(tokenizer, tokenStream)
-//            }
-//        }
-
-        val analyzer = EnglishAnalyzer()
+        val analyzer = object : Analyzer() {
+            override fun createComponents(fieldName: String): TokenStreamComponents {
+                val tokenizer = StandardTokenizer()
+                val tokenStream = StopFilter(PorterStemFilter(LowerCaseFilter(tokenizer)), EnglishAnalyzer.getDefaultStopSet())
+                return TokenStreamComponents(tokenizer, tokenStream)
+            }
+        }
 
         analyzer.tokenStream(fieldName, StringReader(queryText)).use { tokenStream ->
             val charTermAttribute = tokenStream.addAttribute(CharTermAttribute::class.java)

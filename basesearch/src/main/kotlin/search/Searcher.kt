@@ -4,6 +4,7 @@ import color.Color
 import color.PrintColorizer
 import config.Config
 import mu.KLogger
+import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.LowerCaseFilter
 import org.apache.lucene.analysis.StopFilter
 import org.apache.lucene.analysis.TokenStream
@@ -33,7 +34,13 @@ class Searcher(
 ) {
     private val defaultOperator: QueryParser.Operator = QueryParser.OR_OPERATOR
 
-    val analyzer = EnglishAnalyzer()
+    val analyzer = object : Analyzer() {
+        override fun createComponents(fieldName: String): TokenStreamComponents {
+            val tokenizer = StandardTokenizer()
+            val tokenStream = StopFilter(PorterStemFilter(LowerCaseFilter(tokenizer)), EnglishAnalyzer.getDefaultStopSet())
+            return TokenStreamComponents(tokenizer, tokenStream)
+        }
+    }
     val directory = NIOFSDirectory(File(cfg.indexDirectory).toPath())
 
     val termExtractor = TermExtractor()
