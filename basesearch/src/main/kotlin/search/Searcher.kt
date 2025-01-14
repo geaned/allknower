@@ -80,7 +80,6 @@ class Searcher(
         if (l1TopDocs.scoreDocs.isEmpty()) {
             reader.close()
             return SearchResult(l1TopDocs, mutableListOf(), l0DifTime, l1DifTime)
-
         }
 
         // termsResults: docId -> (bm25, hhProximity)
@@ -105,7 +104,7 @@ class Searcher(
         return l1Searcher.search(query, topHitsSize)
     }
 
-    fun filterTopDocsByScore(topDocs: TopDocs, minScore: Float): TopDocs {
+    private fun filterTopDocsByScore(topDocs: TopDocs, minScore: Float): TopDocs {
         val filteredScoreDocs = topDocs.scoreDocs.filter { it.score > minScore }
 
         return TopDocs(

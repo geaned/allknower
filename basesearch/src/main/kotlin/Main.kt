@@ -14,6 +14,7 @@ import mu.KotlinLogging
 import search.SearchResult
 import java.time.Duration
 import java.time.LocalDateTime
+import kotlin.math.min
 
 
 const val configPath = "config/config.yml"
@@ -42,16 +43,30 @@ fun runExperiment(app: App, type: String) {
     val l0DiffTimings = mutableListOf<Float>()
     val l1DiffTimings = mutableListOf<Float>()
 
+    val startRange: Int = System.getenv("START_RANGE").toInt()
+    val endRange: Int = System.getenv("END_RANGE").toInt()
+
+    logger.info { "Start search by queires from $startRange to $endRange" }
+
     val queries = readQueries(type)
-    for (query in queries) {
+    for (i in min(startRange, queries.size) until min(endRange, queries.size)) {
+        val query = queries[i]
+
         val start = LocalDateTime.now()
 
         val (docIds, searchResult) = app.handle(query.text)
 
+        if (searchResult != null) {
+            l0DiffTimings.add(searchResult.l0DiffTime.toMillis().toFloat())
+        }
+        if (searchResult != null) {
+            l1DiffTimings.add(searchResult.l1DiffTime.toMillis().toFloat())
+        }
+
         logger.info { "Found ${docIds.size} documents for query: ${query.queryId} - ${query.text}. Stage: $type" }
 
         if (searchResult == null) {
-            logger.error { "searchResult is null: ${query.queryId} - ${query.text}. Stage: $type" }
+            logger.error { "SearchResult is null: ${query.queryId} - ${query.text}. Stage: $type" }
         }
 
         if (searchResult != null) {
@@ -76,19 +91,12 @@ fun runExperiment(app: App, type: String) {
         val diff = Duration.between(start, end)
 
         searchTimings.add(diff.toMillis().toFloat())
-        if (searchResult != null) {
-            l0DiffTimings.add(searchResult.l0DiffTime.toMillis().toFloat())
-        }
-        if (searchResult != null) {
-            l1DiffTimings.add(searchResult.l1DiffTime.toMillis().toFloat())
-        }
 
-        println()
         logger.info { "Current timings for query: $query: ${diff.toMillis()}" }
-
         logger.info { "STATS L0 (max, min, mean, median): ${calculateStatistics(l0DiffTimings)}" }
-        logger.info { "STATS L1 (max, min, mean, median): ${calculateStatistics(l0DiffTimings)}" }
-        logger.info { "STATS BASE SEARCH (max, min, mean, median): ${calculateStatistics(l0DiffTimings)}" }
+        logger.info { "STATS L1 (max, min, mean, median): ${calculateStatistics(l1DiffTimings)}" }
+        logger.info { "STATS BASE SEARCH (max, min, mean, median): ${calculateStatistics(searchTimings)}" }
+        println()
     }
 
     val resultsJson = Result.listToJson(results)
@@ -100,9 +108,9 @@ fun runExperiment(app: App, type: String) {
 fun readQueries(type: String): List<Query> {
     var query: List<Query> = mutableListOf()
     when (type) {
-        "training" -> query = Query.listFromJson(File("src/main/resources/wikir_queries_training.json").readText())
-        "validation" -> query =  Query.listFromJson(File("src/main/resources/wikir_queries_training.json").readText())
-        "test" -> query =  Query.listFromJson(File("src/main/resources/wikir_queries_training.json").readText())
+        "training" -> query = Query.listFromJson(File("src/main/resources/wikir_queries_${type}.json").readText())
+        "validation" -> query =  Query.listFromJson(File("src/main/resources/wikir_queries_${type}.json").readText())
+        "test" -> query =  Query.listFromJson(File("src/main/resources/wikir_queries_${type}.json").readText())
     }
 
     return query

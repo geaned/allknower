@@ -177,15 +177,21 @@ class HHProximityScorerV2(
 
 
                     val posIdx = otherPositions.binarySearch(pos)
-                    val leftDistance = if (posIdx > 0) pos - otherPositions[posIdx - 1] else Double.MAX_VALUE
-                    val rightDistance = if (posIdx < otherPositions.size - 1) otherPositions[posIdx + 1] - pos else Double.MAX_VALUE
+                    val found = posIdx >= 0
 
-//                    val leftDistance = otherPositions.lastOrNull { it < pos }?.let { pos - it } ?: Double.MAX_VALUE
-//                    val rightDistance = otherPositions.firstOrNull { it > pos }?.let { it - pos } ?: Double.MAX_VALUE
+                    val leftDistance: Double
+                    val rightDistance: Double
+                    if (!found) {
+                        leftDistance = if (-posIdx > 0 && -posIdx <= otherPositions.size) (pos - otherPositions[-posIdx - 1]).toDouble() else Double.MAX_VALUE
+                        rightDistance = if (-posIdx >= 0 && -posIdx <= otherPositions.size - 1) (otherPositions[-posIdx] - pos).toDouble() else Double.MAX_VALUE
+                    } else {
+                        leftDistance = if (posIdx > 0 && posIdx <= otherPositions.size) (pos - otherPositions[posIdx - 1]).toDouble() else Double.MAX_VALUE
+                        rightDistance = if (posIdx < otherPositions.size - 1) (otherPositions[posIdx + 1] - pos).toDouble() else Double.MAX_VALUE
+                    }
 
                     val idfOther = tfidfSimilarity.idf(reader.docFreq(otherTerm).toLong(), reader.numDocs().toLong())
 
-                    (idfOther / leftDistance.toDouble().pow(z) + idfOther / rightDistance.toDouble().pow(z)) * ts
+                    (idfOther / leftDistance.pow(z) + idfOther / rightDistance.pow(z)) * ts
 
                 }
 
@@ -195,9 +201,6 @@ class HHProximityScorerV2(
             val idf = tfidfSimilarity.idf(reader.docFreq(term).toLong(), reader.numDocs().toLong())
 
             hhProximityScore += atc * idf
-
-//            val norms = reader.getNormValues(term.field())
-//            norms.advance(docID())
 
             bm25Score += simScorer.score((termsPerDocFreq[term]?.get(docID())?.toFloat() ?: 0.0f), 1)
         }
