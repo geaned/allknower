@@ -175,8 +175,13 @@ class HHProximityScorerV2(
                 val tc = termPositions.entries.sumOf { (otherTerm, otherPositions) ->
                     val ts = if (otherTerm == term) 0.25 else 1.0
 
-                    val leftDistance = otherPositions.lastOrNull { it < pos }?.let { pos - it } ?: Double.MAX_VALUE
-                    val rightDistance = otherPositions.firstOrNull { it > pos }?.let { it - pos } ?: Double.MAX_VALUE
+
+                    val posIdx = otherPositions.binarySearch(pos)
+                    val leftDistance = if (posIdx > 0) pos - otherPositions[posIdx - 1] else Double.MAX_VALUE
+                    val rightDistance = if (posIdx < otherPositions.size - 1) otherPositions[posIdx + 1] - pos else Double.MAX_VALUE
+
+//                    val leftDistance = otherPositions.lastOrNull { it < pos }?.let { pos - it } ?: Double.MAX_VALUE
+//                    val rightDistance = otherPositions.firstOrNull { it > pos }?.let { it - pos } ?: Double.MAX_VALUE
 
                     val idfOther = tfidfSimilarity.idf(reader.docFreq(otherTerm).toLong(), reader.numDocs().toLong())
 
