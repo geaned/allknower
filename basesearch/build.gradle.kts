@@ -42,6 +42,11 @@ dependencies {
     implementation("com.sksamuel.hoplite:hoplite-core:2.8.0")
     // https://mavenlibs.com/maven/dependency/com.sksamuel.hoplite/hoplite-yaml
     implementation("com.sksamuel.hoplite:hoplite-yaml:2.8.0")
+
+    // https://mvnrepository.com/artifact/io.github.microutils/kotlin-logging-jvm
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+    implementation("ch.qos.logback:logback-classic:1.5.15")
 }
 
 tasks.test {

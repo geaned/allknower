@@ -2,6 +2,8 @@ package search
 
 import color.Color
 import color.PrintColorizer
+import config.Config
+import mu.KLogger
 import org.apache.lucene.analysis.LowerCaseFilter
 import org.apache.lucene.analysis.StopFilter
 import org.apache.lucene.analysis.TokenStream
@@ -25,26 +27,23 @@ import java.io.StringReader
 
 
 class Searcher(
-    val fileIndex: File,
+    private val logger: KLogger,
+    private val cfg: Config,
     val searchField: String = "content",
 ) {
     private val defaultOperator: QueryParser.Operator = QueryParser.OR_OPERATOR
 
     val analyzer = EnglishAnalyzer()
-    val directory = NIOFSDirectory(fileIndex.toPath())
+    val directory = NIOFSDirectory(File(cfg.indexDirectory).toPath())
 
     val termExtractor = TermExtractor()
 
     fun searchDocuments(query: String): Pair<TopDocs, MutableList<List<Float>>?> {
         val reader = DirectoryReader.open(directory)
 
-        val terms = termExtractor.ExtractTerms(searchField, query)
-        println(
-            PrintColorizer().Colorize(
-                "Searching for: $terms\n",
-                Color.LIGHT_RED
-            )
-        )
+        val terms = termExtractor.extractTerms(searchField, query)
+
+        logger.debug { "Searching for: $terms" }
 
         val queryParser = QueryParser(searchField, analyzer)
         queryParser.defaultOperator = defaultOperator
@@ -55,8 +54,22 @@ class Searcher(
         val l0Hits = l0TopDocs.scoreDocs
         val docIds = l0Hits.map { it.doc }.toList().sorted()
 
+        logger.info { "Found ${l0Hits.size} documents on L0 stage for query: $query" }
+
+        if (l0Hits.isEmpty()) {
+            reader.close()
+            return Pair(l0TopDocs, mutableListOf())
+        }
+
         val proximityQuery = HHProximityQueryV2(terms, docIds)
         val l1TopDocs = filterTopDocsByScore(l1Search(reader, proximityQuery), 0.0f)
+
+        logger.info { "Found ${l1TopDocs.scoreDocs.size} documents on L1 stage for query: $query" }
+
+        if (l1TopDocs.scoreDocs.isEmpty()) {
+            reader.close()
+            return Pair(l1TopDocs, mutableListOf())
+        }
 
         // termsResults: docId -> (bm25, hhProximity)
         val features = calculateFeatures(reader, query, l1TopDocs, proximityQuery.termsResults)
@@ -66,14 +79,14 @@ class Searcher(
         return Pair(l1TopDocs, features)
     }
 
-    fun l0Search(reader: IndexReader, query: Query, topHitsSize: Int = 10_000): TopDocs {
+    fun l0Search(reader: IndexReader, query: Query, topHitsSize: Int = cfg.l0NumDocs): TopDocs {
         val l0Searcher = IndexSearcher(reader)
         l0Searcher.similarity = ClassicSimilarity()
 
         return l0Searcher.search(query, topHitsSize)
     }
 
-    fun l1Search(reader: IndexReader, query: Query, topHitsSize: Int = 1_000): TopDocs {
+    fun l1Search(reader: IndexReader, query: Query, topHitsSize: Int = cfg.l1NumDocs): TopDocs {
         val l1Searcher = IndexSearcher(reader)
         l1Searcher.similarity = BM25Similarity()
 
@@ -156,7 +169,6 @@ class Searcher(
         val hhProximityScores = mutableListOf<Float>()
 
         docs.scoreDocs.forEach {
-            println(storedFields.document(it.doc).fields)
             val document = storedFields.document(it.doc)
 
             var docText = document.getField("content")?.stringValue()

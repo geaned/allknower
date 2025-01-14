@@ -1,6 +1,9 @@
 package org.example.search
 
-import org.apache.lucene.index.*
+import org.apache.lucene.index.LeafReader
+import org.apache.lucene.index.LeafReaderContext
+import org.apache.lucene.index.PostingsEnum
+import org.apache.lucene.index.Term
 import org.apache.lucene.search.*
 import org.apache.lucene.search.similarities.ClassicSimilarity
 import org.apache.lucene.search.similarities.Similarity.SimScorer
@@ -36,11 +39,18 @@ class HHProximityQueryV2(
 
     override fun createWeight(searcher: IndexSearcher, scoreMode: ScoreMode, boost: Float): Weight {
         val collectionStats = searcher.collectionStatistics(terms.first().field())
-        val termStats = terms.map { term ->
-            val docFreq =  searcher.indexReader.docFreq(term)
+
+        val termStats = mutableListOf<TermStatistics>()
+        for (term in terms) {
+            val docFreq = searcher.indexReader.docFreq(term)
             val totalTermFreq = searcher.indexReader.totalTermFreq(term)
-            searcher.termStatistics(term, docFreq, totalTermFreq)
+            if (docFreq == 0 || totalTermFreq == 0L) {
+                continue
+            }
+
+            termStats.add(searcher.termStatistics(term, docFreq, totalTermFreq))
         }
+
         val simScorer = searcher.similarity.scorer(boost, collectionStats, *termStats.toTypedArray())
 
         return HHProximityWeightV2(this, terms, docIDs, simScorer, z)
@@ -75,22 +85,33 @@ class HHProximityWeightV2(
             reader.postings(term, PostingsEnum.POSITIONS.toInt())?.let { postings ->
                 val docsFreq = mutableMapOf<Int, Int>()
                 val docPositions = mutableMapOf<Int, List<Int>>()
-                for (docId in docIDs) {
-                    postings.advance(docId)
-                    if (postings.docID() == docId) {
-                        val positions = mutableListOf<Int>()
-                        repeat(postings.freq()) {
-                            positions.add(postings.nextPosition())
-                        }
 
-                        docPositions[postings.docID()] = positions
-                        docsFreq[postings.docID()] = postings.freq()
+                while (postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+                    val positions = mutableListOf<Int>()
+                    repeat(postings.freq()) {
+                        positions.add(postings.nextPosition())
                     }
 
-                    if (postings.docID() == PostingsEnum.NO_MORE_DOCS) {
-                        break
-                    }
+                    docPositions[postings.docID()] = positions
+                    docsFreq[postings.docID()] = postings.freq()
                 }
+
+//                for (docId in docIDs) {
+//                    postings.advance(docId)
+//                    if (postings.docID() == docId) {
+//                        val positions = mutableListOf<Int>()
+//                        repeat(postings.freq()) {
+//                            positions.add(postings.nextPosition())
+//                        }
+//
+//                        docPositions[postings.docID()] = positions
+//                        docsFreq[postings.docID()] = postings.freq()
+//                    }
+//
+//                    if (postings.docID() == PostingsEnum.NO_MORE_DOCS) {
+//                        break
+//                    }
+//                }
 
                 term to Pair(docsFreq, docPositions)
             }
@@ -107,7 +128,7 @@ class HHProximityWeightV2(
         }.toMap()
 
         return HHProximityScorerV2(
-            this, docIDs.distinct().sorted(), termsPerDocFreq, termsPerDocPositions, reader, simScorer, z
+            this, docIDs, termsPerDocFreq, termsPerDocPositions, reader, simScorer, z
         )
     }
 }
@@ -131,10 +152,18 @@ class HHProximityScorerV2(
         var hhProximityScore = 0.0
         var bm25Score = 0.0
 
-        val termPositions = termsPerDocPositions.map { (term, docPositionsMap) ->
-            val positions = docPositionsMap[docID()] ?: emptyList()
-            term to positions
-        }.toMap()
+        val termPositions = mutableMapOf<Term, List<Int>>()
+        for ((term, docPositionsMap) in termsPerDocPositions) {
+            if (docIDs.contains(docID())) {
+                val positions = docPositionsMap[docID()] ?: emptyList()
+                termPositions[term] = positions
+            }
+        }
+
+//        val termPositions = termsPerDocPositions.map { (term, docPositionsMap) ->
+//            val positions = docPositionsMap[docID()] ?: emptyList()
+//            term to positions
+//        }.toMap()
 
         for ((term, positions) in termPositions) {
             if (positions.isEmpty()) {
