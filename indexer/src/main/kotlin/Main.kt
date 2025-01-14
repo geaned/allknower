@@ -43,6 +43,10 @@ suspend fun documentIndexing(
     for (documents in documentsChannel) {
         logger.info { "Read from channel ${documents.size} documents." }
 
-        indexer.updateIndex(documents)
+        try {
+            indexer.updateIndex(documents)
+        } catch (e: Exception) {
+            logger.error { "Failed to update index. Error: ${e.message}" }
+        }
     }
 }

@@ -1,4 +1,4 @@
-package config
+    package config
 
 import com.sksamuel.hoplite.ConfigAlias
 import com.sksamuel.hoplite.decoder.Seconds
