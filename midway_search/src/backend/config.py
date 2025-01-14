@@ -6,8 +6,8 @@ from pydantic_settings import (
 
 
 class QueryEmbedderAPIConfig(BaseSettings):
-    text_embedder_endpoint: str = "http://195.70.199.13:8766/embed/texts"
-    image_embedder_endpoint: str = "http://195.70.199.13:8765/embed/texts"
+    text_endpoint: str = "http://195.70.199.13:8766/embed/texts"
+    image_endpoint: str = "http://195.70.199.13:8765/embed/texts"
 
 
 class BaseSearchAPIConfig(BaseSettings):
