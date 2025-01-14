@@ -1,0 +1,9 @@
+version: '3.7'
+services:
+  basesearch-server:
+    build:
+      context: ./basesearch-server/
+    ports:
+      - "8081:8081"
+    volumes:
+      - /home/allknower/index_v2:/app/index

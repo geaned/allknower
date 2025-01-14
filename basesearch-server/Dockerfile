@@ -16,6 +16,8 @@ FROM openjdk:17-jdk-slim
 
 WORKDIR /app
 
-COPY --from=build /app/build/install/basesearch /app
+COPY --from=build /app/build/install/basesearch-server /app
+COPY ./src/main/resources  ./src/main/resources
+EXPOSE 8081
 
-CMD ["./bin/basesearch"]
+CMD ["./bin/basesearch-server"]

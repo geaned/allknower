@@ -44,7 +44,7 @@ class App(
         val (topDocs, features) = searcher.searchDocuments(query)
 
         val resultDocuments = mutableListOf<ResultDocument>()
-        for (scoreDoc in topDocs.scoreDocs) {
+        topDocs.scoreDocs.forEachIndexed { index, scoreDoc ->
             val doc = storedFields.document(scoreDoc.doc)
 
             val docId = doc.getField("doc_id").stringValue()
@@ -60,7 +60,7 @@ class App(
                 embedding = embeddingDeserialized
             }
 
-            val resultFeatures = features?.get(scoreDoc.doc) ?: emptyList<Float>()
+            val resultFeatures = features?.get(index) ?: emptyList<Float>()
 
             resultDocuments.add(
                 ResultDocument(
