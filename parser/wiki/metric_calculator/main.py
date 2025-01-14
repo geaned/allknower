@@ -26,6 +26,7 @@ class ParserStats:
     TextP99Time: float = 0
     TimeFirstParsed: str = ""
     TimeLastParsed: str = ""
+    TimePerDoc: float = 0
 
     def __str__(self) -> str:
         return (
@@ -33,11 +34,12 @@ class ParserStats:
             f"Parsed docs: {self.DocsParsed}\n"
             f"Redirection ratio: {self.DocsRedirectionRatio * 100:.2f}%\n"
             f"Parsed images: {self.ImagesParsed}\n"
-            f"Images error ratio: {self.ImagesErrorRatio * 100:.2f} %\n"
+            f"Images error ratio: {self.ImagesErrorRatio * 100:.2f}%\n"
             f"Duration: avg = {self.DurationAvg:.2f}s, "
             f"p99 = {self.DurationP99:.2f}s, max = {self.DurationMax:.2f}s\n"
             f"First parsed time: {self.TimeFirstParsed[:-3]}\n"
             f"Last parsed time: {self.TimeLastParsed[:-3]}\n"
+            f"Average time per doc: {self.TimePerDoc:.2f}s\n"
             f"---- CLIP ----\n"
             f"Request time: avg = {self.CLIPAvgTime:.2f}s, "
             f"p99 = {self.CLIPP99Time:.2f}s\n"
@@ -58,6 +60,7 @@ class WriterStats:
     DocSizeP99: float = 0
     WriteAmount: int = 0
     WriteErrorRatio: float = 0
+    WriteAvg: float = 0
     WriteFirst: str = ""
     WriteLast: str = ""
 
@@ -70,6 +73,7 @@ class WriterStats:
             f"Error ratio: {self.WriteErrorRatio * 100:.2f}%\n"
             f"First write time: {self.WriteFirst[:-3]}\n"
             f"Last write time: {self.WriteLast[:-3]}\n"
+            f"Average time per write: {self.WriteAvg:.2f}s\n"
         )
 
 
@@ -152,6 +156,8 @@ def calculate_parser_stats(log_dir: List[str]) -> ParserStats:  # noqa: PLR0912,
         stats.TimeFirstParsed = datetime.strftime(first_time, "%Y-%m-%d %H:%M:%S,%f")
     if last_time is not None:
         stats.TimeLastParsed = datetime.strftime(last_time, "%Y-%m-%d %H:%M:%S,%f")
+    if first_time is not None and last_time is not None:
+        stats.TimePerDoc = (last_time - first_time).seconds / stats.DocsParsed
 
     return stats
 
@@ -191,6 +197,8 @@ def calculate_writer_stats(log_dir: List[str]) -> WriterStats:
     stats.DocSizeP99 = np.quantile(doc_sizes, 0.99).item()
     stats.DocSizeMax = np.max(doc_sizes).item()
     stats.WriteErrorRatio /= stats.WriteAmount
+    if first_time is not None and last_time is not None:
+        stats.WriteAvg = (last_time - first_time).seconds / stats.WriteAmount
     if first_time is not None:
         stats.WriteFirst = datetime.strftime(first_time, "%Y-%m-%d %H:%M:%S,%f")
     if last_time is not None:
