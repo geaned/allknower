@@ -1,9 +1,10 @@
+import os
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
+
 import numpy as np
-import os
-import sys
 
 
 @dataclass
@@ -72,7 +73,7 @@ class WriterStats:
         )
 
 
-def calculate_parser_stats(log_dir: List[str]) -> ParserStats:
+def calculate_parser_stats(log_dir: List[str]) -> ParserStats:  # noqa: PLR0912, PLR0915
     stats = ParserStats()
     parse_times: List[float] = []
     clip_times: List[float] = []
@@ -93,8 +94,7 @@ def calculate_parser_stats(log_dir: List[str]) -> ParserStats:
                         parse_times.append(float(line.split()[-3][:-1]))
 
                         parsed_time = datetime.strptime(
-                            " ".join(line.split()[:2]),
-                            "%Y-%m-%d %H:%M:%S,%f"
+                            " ".join(line.split()[:2]), "%Y-%m-%d %H:%M:%S,%f"
                         )
                         if first_time is None or parsed_time < first_time:
                             first_time = parsed_time
@@ -108,16 +108,19 @@ def calculate_parser_stats(log_dir: List[str]) -> ParserStats:
                     if "Successfully parsed image" in line:
                         stats.ImagesParsed += 1
 
-                    if "While parsing image" in line or "While downloading image" in line:
+                    if (
+                        "While parsing image" in line
+                        or "While downloading image" in line
+                    ):
                         stats.ImagesErrorRatio += 1
                         stats.ImagesParsed += 1
-                    
+
                     if "Request to CLIP server took" in line:
                         clip_times.append(float(line.split()[-1][:-1]))
-                    
+
                     if "Request to text model server took" in line:
                         text_times.append(float(line.split()[-1][:-1]))
-                    
+
                     if "While applying CLIP" in line:
                         stats.CLIPErrorRatio += 1
 
@@ -129,11 +132,11 @@ def calculate_parser_stats(log_dir: List[str]) -> ParserStats:
 
                     if "Empty web enrichment TextEnrichment" in line:
                         stats.TextEmptyRatio += 1
-                except Exception:
+                except Exception:  # noqa: BLE001, S112
                     continue
 
     stats.CLIPEmptyRatio /= len(clip_times)
-    stats.CLIPErrorRatio /= (stats.CLIPErrorRatio + len(clip_times))
+    stats.CLIPErrorRatio /= stats.CLIPErrorRatio + len(clip_times)
     stats.CLIPAvgTime = np.mean(clip_times).item()
     stats.CLIPP99Time = np.quantile(clip_times, 0.99).item()
     stats.DocsRedirectionRatio /= stats.DocsParsed
@@ -142,7 +145,7 @@ def calculate_parser_stats(log_dir: List[str]) -> ParserStats:
     stats.DurationMax = np.max(parse_times).item()
     stats.ImagesErrorRatio /= stats.ImagesParsed
     stats.TextEmptyRatio /= len(text_times)
-    stats.TextErrorRatio /= (stats.TextErrorRatio + len(text_times))
+    stats.TextErrorRatio /= stats.TextErrorRatio + len(text_times)
     stats.TextAvgTime = np.mean(text_times).item()
     stats.TextP99Time = np.quantile(text_times, 0.99).item()
     if first_time is not None:
@@ -172,8 +175,7 @@ def calculate_writer_stats(log_dir: List[str]) -> WriterStats:
                         doc_sizes.append(int(line.split()[-1][:-1]))
 
                         parsed_time = datetime.strptime(
-                            " ".join(line.split()[:2]),
-                            "%Y-%m-%d %H:%M:%S,%f"
+                            " ".join(line.split()[:2]), "%Y-%m-%d %H:%M:%S,%f"
                         )
                         if first_time is None or parsed_time < first_time:
                             first_time = parsed_time
@@ -182,7 +184,7 @@ def calculate_writer_stats(log_dir: List[str]) -> WriterStats:
 
                     if "While writing page" in line:
                         stats.WriteErrorRatio += 1
-                except Exception:
+                except Exception:  # noqa: BLE001, S112
                     continue
 
     stats.DocSizeAvg = np.mean(doc_sizes).item()
@@ -197,22 +199,22 @@ def calculate_writer_stats(log_dir: List[str]) -> WriterStats:
     return stats
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     log_dir = sys.argv[1]
     log_files = os.listdir(log_dir)
 
     writer_logs = [
         os.path.join(log_dir, file_name)
         for file_name in log_files
-        if file_name.split('/')[-1] == 'output_writer.log'
+        if file_name.split("/")[-1] == "output_writer.log"
     ]
     parser_logs = [
         os.path.join(log_dir, file_name)
         for file_name in log_files
         if (
-            file_name.split('/')[-1].startswith('output_') and
-            file_name.split('/')[-1].endswith('.log') and
-            file_name not in writer_logs
+            file_name.split("/")[-1].startswith("output_")
+            and file_name.split("/")[-1].endswith(".log")
+            and file_name not in writer_logs
         )
     ]
 
