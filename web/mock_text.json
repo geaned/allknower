@@ -1,0 +1,29 @@
+[
+    {
+        "is_text": true,
+        "doc_id": "1-42",
+        "page_url": "https://en.wikipedia.org/wiki/Integral",
+        "content": "In mathematics, an integral is the continuous analog of a sum, which is used to calculate areas, volumes, and their generalizations. Integration, the process of computing an integral, is one of the two fundamental operations of calculus, the other being differentiation.",
+        "title": "Integral",
+        "metadata_title": null,
+        "metadata_description": null
+    },
+    {
+        "is_text": true,
+        "doc_id": "2-2",
+        "page_url": "https://en.wikipedia.org/wiki/Aristotle",
+        "content": "Little is known about Aristotle's life. He was born in the city of Stagira in northern Greece during the Classical period.",
+        "title": "Aristotle",
+        "metadata_title": null,
+        "metadata_description": null
+    },
+    {
+        "is_text": false,
+        "doc_id": "3-2",
+        "page_url": "https://en.wikipedia.org/wiki/Alexander_Pushkin",
+        "content": "Pushkin was born into the Russian nobility in Moscow. His father, Sergey Lvovich Pushkin, belonged to an old noble family. One of his maternal great-grandfathers was Major-General Abram Petrovich Gannibal, a nobleman of African origin who was kidnapped from his homeland by the Ottomans, then freed by the Russian Emperor and raised in the Emperor's court household as his godson.",
+        "title": "Alexander Pushkin",
+        "metadata_title": null,
+        "metadata_description": null
+    }
+]
