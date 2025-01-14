@@ -50,7 +50,7 @@ fun runExperiment(app: App, type: String) {
 
         logger.info { "Found ${docIds.size} documents for query: ${query.queryId} - ${query.text}. Stage: $type" }
 
-        if (searchResult != null) {
+        if (searchResult == null) {
             logger.error { "searchResult is null: ${query.queryId} - ${query.text}. Stage: $type" }
         }
 

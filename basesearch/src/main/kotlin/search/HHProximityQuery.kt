@@ -86,32 +86,32 @@ class HHProximityWeightV2(
                 val docsFreq = mutableMapOf<Int, Int>()
                 val docPositions = mutableMapOf<Int, List<Int>>()
 
-                while (postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-                    val positions = mutableListOf<Int>()
-                    repeat(postings.freq()) {
-                        positions.add(postings.nextPosition())
+//                while (postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+//                    val positions = mutableListOf<Int>()
+//                    repeat(postings.freq()) {
+//                        positions.add(postings.nextPosition())
+//                    }
+//
+//                    docPositions[postings.docID()] = positions
+//                    docsFreq[postings.docID()] = postings.freq()
+//                }
+
+                for (docId in docIDs) {
+                    postings.advance(docId)
+                    if (postings.docID() == docId) {
+                        val positions = mutableListOf<Int>()
+                        repeat(postings.freq()) {
+                            positions.add(postings.nextPosition())
+                        }
+
+                        docPositions[postings.docID()] = positions
+                        docsFreq[postings.docID()] = postings.freq()
                     }
 
-                    docPositions[postings.docID()] = positions
-                    docsFreq[postings.docID()] = postings.freq()
+                    if (postings.docID() == PostingsEnum.NO_MORE_DOCS) {
+                        break
+                    }
                 }
-
-//                for (docId in docIDs) {
-//                    postings.advance(docId)
-//                    if (postings.docID() == docId) {
-//                        val positions = mutableListOf<Int>()
-//                        repeat(postings.freq()) {
-//                            positions.add(postings.nextPosition())
-//                        }
-//
-//                        docPositions[postings.docID()] = positions
-//                        docsFreq[postings.docID()] = postings.freq()
-//                    }
-//
-//                    if (postings.docID() == PostingsEnum.NO_MORE_DOCS) {
-//                        break
-//                    }
-//                }
 
                 term to Pair(docsFreq, docPositions)
             }
@@ -152,18 +152,18 @@ class HHProximityScorerV2(
         var hhProximityScore = 0.0
         var bm25Score = 0.0
 
-        val termPositions = mutableMapOf<Term, List<Int>>()
-        for ((term, docPositionsMap) in termsPerDocPositions) {
-            if (docIDs.contains(docID())) {
-                val positions = docPositionsMap[docID()] ?: emptyList()
-                termPositions[term] = positions
-            }
-        }
+//        val termPositions = mutableMapOf<Term, List<Int>>()
+//        for ((term, docPositionsMap) in termsPerDocPositions) {
+//            if (docIDs.contains(docID())) {
+//                val positions = docPositionsMap[docID()] ?: emptyList()
+//                termPositions[term] = positions
+//            }
+//        }
 
-//        val termPositions = termsPerDocPositions.map { (term, docPositionsMap) ->
-//            val positions = docPositionsMap[docID()] ?: emptyList()
-//            term to positions
-//        }.toMap()
+        val termPositions = termsPerDocPositions.map { (term, docPositionsMap) ->
+            val positions = docPositionsMap[docID()] ?: emptyList()
+            term to positions
+        }.toMap()
 
         for ((term, positions) in termPositions) {
             if (positions.isEmpty()) {
@@ -191,10 +191,10 @@ class HHProximityScorerV2(
 
             hhProximityScore += atc * idf
 
-            val norms = reader.getNormValues(term.field())
-            norms.advance(docID())
+//            val norms = reader.getNormValues(term.field())
+//            norms.advance(docID())
 
-            bm25Score += simScorer.score((termsPerDocFreq[term]?.get(docID())?.toFloat() ?: 0.0f), norms.longValue())
+            bm25Score += simScorer.score((termsPerDocFreq[term]?.get(docID())?.toFloat() ?: 0.0f), 1)
         }
 
         hhProximityScore = ln(1 + hhProximityScore)
