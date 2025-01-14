@@ -1,0 +1,29 @@
+[
+    {
+        "is_text": false,
+        "doc_id": "ABC123",
+        "page_url": "https://en.wikipedia.org/wiki/Integral",
+        "content": null,
+        "title": "Integral",
+        "metadata_title": "Volume_under_surface.png",
+        "metadata_description": "Double integral computes volume under a surface z = f(x, y)"
+    },
+    {
+        "is_text": false,
+        "doc_id": "ARIS308",
+        "page_url": "https://en.wikipedia.org/wiki/Aristotle",
+        "content": null,
+        "title": "Aristotle",
+        "metadata_title": "Aristotle_Altemps_Inv8575.jpg",
+        "metadata_description": "Bust of Aristotle. Marble, Roman copy after a Greek bronze original by Lysippos from 330 BC; the alabaster mantle is a modern addition."
+    },
+    {
+        "is_text": false,
+        "doc_id": "POET1799",
+        "page_url": "https://en.wikipedia.org/wiki/Alexander_Pushkin",
+        "content": null,
+        "title": "Alexander Pushkin",
+        "metadata_title": "Kiprensky_Pushkin.jpg",
+        "metadata_description": "Portrait by Orest Kiprensky, 1827"
+    }
+]
