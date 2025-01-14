@@ -18,7 +18,7 @@
         "metadata_description": null
     },
     {
-        "is_text": false,
+        "is_text": true,
         "doc_id": "3-2",
         "page_url": "https://en.wikipedia.org/wiki/Alexander_Pushkin",
         "content": "Pushkin was born into the Russian nobility in Moscow. His father, Sergey Lvovich Pushkin, belonged to an old noble family. One of his maternal great-grandfathers was Major-General Abram Petrovich Gannibal, a nobleman of African origin who was kidnapped from his homeland by the Ottomans, then freed by the Russian Emperor and raised in the Emperor's court household as his godson.",

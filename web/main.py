@@ -45,11 +45,12 @@ def main() -> None:
         fail = False
 
         if DEBUG:
-            with open("mock_text.json") as mock_text:
-                full_text_search_docs = json.load(mock_text)
-                vector_search_text_docs = json.load(mock_text)
+            with open("./mock_text.json") as mock_text:
+                text_data = json.load(mock_text)
+                full_text_search_docs = text_data
+                vector_search_text_docs = text_data
 
-            with open("mock_image.json") as mock_image:
+            with open("./mock_image.json") as mock_image:
                 vector_search_image_docs = json.load(mock_image)
 
             all_docs = (vector_search_text_docs + vector_search_image_docs).copy()
