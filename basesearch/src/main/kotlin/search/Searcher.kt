@@ -4,12 +4,12 @@ import color.Color
 import color.PrintColorizer
 import config.Config
 import mu.KLogger
-import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.LowerCaseFilter
 import org.apache.lucene.analysis.StopFilter
 import org.apache.lucene.analysis.TokenStream
 import org.apache.lucene.analysis.en.EnglishAnalyzer
 import org.apache.lucene.analysis.en.PorterStemFilter
+import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.standard.StandardTokenizer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.DirectoryReader
@@ -25,6 +25,8 @@ import org.apache.lucene.store.NIOFSDirectory
 import org.example.search.HHProximityQueryV2
 import java.io.File
 import java.io.StringReader
+import java.time.Duration
+import java.time.LocalDateTime
 
 
 class Searcher(
@@ -34,18 +36,12 @@ class Searcher(
 ) {
     private val defaultOperator: QueryParser.Operator = QueryParser.OR_OPERATOR
 
-    val analyzer = object : Analyzer() {
-        override fun createComponents(fieldName: String): TokenStreamComponents {
-            val tokenizer = StandardTokenizer()
-            val tokenStream = StopFilter(PorterStemFilter(LowerCaseFilter(tokenizer)), EnglishAnalyzer.getDefaultStopSet())
-            return TokenStreamComponents(tokenizer, tokenStream)
-        }
-    }
+    val analyzer = StandardAnalyzer()
     val directory = NIOFSDirectory(File(cfg.indexDirectory).toPath())
 
     val termExtractor = TermExtractor()
 
-    fun searchDocuments(query: String): Pair<TopDocs, MutableList<List<Float>>?> {
+    fun searchDocuments(query: String): SearchResult {
         val reader = DirectoryReader.open(directory)
 
         val terms = termExtractor.extractTerms(searchField, query)
@@ -55,27 +51,36 @@ class Searcher(
         val queryParser = QueryParser(searchField, analyzer)
         queryParser.defaultOperator = defaultOperator
 
+        val l0TimeStart = LocalDateTime.now()
+
         val queryObj = queryParser.parse(query)
         val l0TopDocs = filterTopDocsByScore(l0Search(reader, queryObj), 0.0f)
+
+        val l0DifTime = Duration.between(l0TimeStart, LocalDateTime.now())
+
+        logger.info { "Found ${l0TopDocs.scoreDocs.size} documents on L0 stage for query: $query" }
 
         val l0Hits = l0TopDocs.scoreDocs
         val docIds = l0Hits.map { it.doc }.toList().sorted()
 
-        logger.info { "Found ${l0Hits.size} documents on L0 stage for query: $query" }
-
         if (l0Hits.isEmpty()) {
             reader.close()
-            return Pair(l0TopDocs, mutableListOf())
+            return SearchResult(l0TopDocs, mutableListOf(), l0DifTime, Duration.ZERO)
         }
+
+        val l1TimeStart = LocalDateTime.now()
 
         val proximityQuery = HHProximityQueryV2(terms, docIds)
         val l1TopDocs = filterTopDocsByScore(l1Search(reader, proximityQuery), 0.0f)
+
+        val l1DifTime = Duration.between(l1TimeStart, LocalDateTime.now())
 
         logger.info { "Found ${l1TopDocs.scoreDocs.size} documents on L1 stage for query: $query" }
 
         if (l1TopDocs.scoreDocs.isEmpty()) {
             reader.close()
-            return Pair(l1TopDocs, mutableListOf())
+            return SearchResult(l1TopDocs, mutableListOf(), l0DifTime, l1DifTime)
+
         }
 
         // termsResults: docId -> (bm25, hhProximity)
@@ -83,7 +88,7 @@ class Searcher(
 
         reader.close()
 
-        return Pair(l1TopDocs, features)
+        return SearchResult(l1TopDocs, features, l0DifTime, l1DifTime)
     }
 
     fun l0Search(reader: IndexReader, query: Query, topHitsSize: Int = cfg.l0NumDocs): TopDocs {
@@ -244,4 +249,11 @@ class Searcher(
         return features
     }
 }
+
+data class SearchResult(
+    val topDocs: TopDocs,
+    val features: MutableList<List<Float>>?,
+    val l0DiffTime: Duration,
+    val l1DiffTime: Duration,
+)
 
