@@ -1,9 +1,9 @@
 import json
 from random import shuffle
-import requests
-import streamlit as st
 from typing import Any, Dict
 
+import requests
+import streamlit as st
 
 # TODO: switch to actual endpoint
 ALLKNOWER_ENDPOINT = ""
@@ -31,9 +31,7 @@ class Renderer:
         )
         st.caption(f"[{doc["title"]}]({doc["page_url"]}) - ID {doc["doc_id"]}")
         st.markdown(f"![{doc["title"]}]({image_url})")
-        st.write(
-            f"{".".join(doc["metadata_title"].split(".")[:-1]).replace("_", " ")}"
-        )
+        st.write(f"{".".join(doc["metadata_title"].split(".")[:-1]).replace("_", " ")}")
         st.caption(doc["metadata_description"])
 
 
@@ -47,22 +45,20 @@ def main() -> None:
         fail = False
 
         if DEBUG:
-            full_text_search_docs = json.load(open("mock_text.json"))
-            vector_search_text_docs = json.load(open("mock_text.json"))
-            vector_search_image_docs = json.load(open("mock_image.json"))
-            all_docs = (
-                vector_search_text_docs +
-                vector_search_image_docs
-            ).copy()
+            with open("mock_text.json") as mock_text:
+                full_text_search_docs = json.load(mock_text)
+                vector_search_text_docs = json.load(mock_text)
+
+            with open("mock_image.json") as mock_image:
+                vector_search_image_docs = json.load(mock_image)
+
+            all_docs = (vector_search_text_docs + vector_search_image_docs).copy()
             shuffle(all_docs)
             blender_docs = all_docs[:3]
 
         else:
             # TODO: input format
-            resp = requests.get(
-                ALLKNOWER_ENDPOINT,
-                json=query
-            )
+            resp = requests.get(ALLKNOWER_ENDPOINT, json=query, timeout=60)
 
             match resp.status_code:
                 case 200:
@@ -71,11 +67,11 @@ def main() -> None:
                     vector_search_text_docs = contents["vector_search_text_docs"]
                     vector_search_image_docs = contents["vector_search_image_docs"]
                     blender_docs = contents["blender_docs"]
-                
+
                 case _:
                     fail = True
-                    st.markdown(f"**Oops! Something went wrong...**")
-                    st.markdown(f"![Epic Fail](https://i.imgur.com/gqzhrUg.png)")
+                    st.markdown("**Oops! Something went wrong...**")
+                    st.markdown("![Epic Fail](https://i.imgur.com/gqzhrUg.png)")
 
         if not fail:
             cols = st.columns(4, gap="medium")
@@ -101,5 +97,5 @@ def main() -> None:
                     Renderer.render(item)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
