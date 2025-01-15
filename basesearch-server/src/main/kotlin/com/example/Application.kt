@@ -52,7 +52,7 @@ class App(
             val title = doc.getField("title").stringValue()
             val content = doc.getField("content")?.stringValue()
 
-            val embeddingSerialized = doc.getField("embedding_serialized")?.stringValue()
+            val embeddingSerialized = doc.getField("embedding")?.stringValue()
             var embedding = emptyList<Float>()
             if (embeddingSerialized != null) {
                 val typeToken = object : TypeToken<List<Float>>() {}.type

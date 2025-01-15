@@ -32,7 +32,7 @@ class Searcher(
     private val cfg: Config,
     val searchField: String = "content",
 ) {
-    private val defaultOperator: QueryParser.Operator = QueryParser.OR_OPERATOR
+    private val defaultOperator: QueryParser.Operator = QueryParser.AND_OPERATOR
 
     val analyzer = object : Analyzer() {
         override fun createComponents(fieldName: String): TokenStreamComponents {
