@@ -1,4 +1,3 @@
-from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -24,9 +23,8 @@ class BaseSearchResponse(BaseModel):
 
 
 class BlenderResponse(BaseModel):
-    query_embedding: list[float]
-    doc_embeddings: list[list[float]]
-    is_text: bool
+    scores: list[float]
+    latency: float
 
 
 class MidwaySearchDocument(BaseModel):

@@ -39,7 +39,7 @@ class Ranker:
     ).time()
     def rank(
         self, docs: list[BaseSearchDocument], top_n: int = 10
-    ) -> list[MidwaySearchDocument]:
+    ) -> tuple[list[BaseSearchDocument], list[float]]:
         features = [doc.features for doc in docs]
 
         logger.info("Started prediction")
@@ -52,7 +52,4 @@ class Ranker:
         # sort in reverse order
         argsort_predictions = np.argsort(-predictions)
 
-        return [
-            MidwaySearchDocument.model_validate(docs[idx].dict())
-            for idx in argsort_predictions[:top_n]
-        ]
+        return [docs[idx].dict() for idx in argsort_predictions[:top_n]], [predictions[idx] for idx in argsort_predictions[:top_n]]
