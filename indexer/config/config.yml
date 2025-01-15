@@ -1,6 +1,6 @@
 index_directory: "index/v4"
 
-document_topic: "wiki-parsed"
+document_topic: "wiki-parsed-v2"
 
 consumer:
   bootstrap_servers: "localhost:9091,localhost:9092,localhost:9093"
