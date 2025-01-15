@@ -38,10 +38,10 @@ fun Application.module() {
 class App(
     private val searcher: Searcher,
 ) {
-    private val storedFields = DirectoryReader.open(searcher.directory).storedFields()
-
     fun handle(query: String): List<ResultDocument> {
         val (topDocs, features) = searcher.searchDocuments(query)
+
+        val storedFields = DirectoryReader.open(searcher.directory).storedFields()
 
         val resultDocuments = mutableListOf<ResultDocument>()
         topDocs.scoreDocs.forEachIndexed { index, scoreDoc ->
