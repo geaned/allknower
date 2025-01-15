@@ -17,10 +17,11 @@ import kotlin.time.toJavaDuration
 class DocumentConsumer(
     val logger: KLogger,
     val documentChannel: Channel<List<WikiDocument>>,
+    val consumerName: String,
 
     val cfg: DocumentConsumerConfig,
 ) {
-    private val consumer = createConsumer(cfg.bootstrapServers, cfg.groupId)
+    private val consumer = createConsumer(cfg.bootstrapServers, consumerName)
     private val documentsToIndex = mutableListOf<WikiDocument>()
     private var lastTimeCommit = Instant.now()
 

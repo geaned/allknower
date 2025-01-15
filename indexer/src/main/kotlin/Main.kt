@@ -21,7 +21,7 @@ private val logger = KotlinLogging.logger {}
 fun main(args: Array<String>): Unit = runBlocking {
     logger.info { "Starting Indexer with args: $args" }
 
-    val (serviceType, topic) = args
+    val (serviceType, consumer) = args
 
     val config = ConfigLoader().loadConfigOrThrow<Config>(configPath)
 
@@ -38,10 +38,10 @@ fun main(args: Array<String>): Unit = runBlocking {
     }
 
     val documentsChannel = Channel<List<WikiDocument>>()
-    val documentConsumer = DocumentConsumer(logger, documentsChannel, config.documentConsumerConfig)
+    val documentConsumer = DocumentConsumer(logger, documentsChannel, consumer, config.documentConsumerConfig)
 
     coroutineScope {
-        launch { documentConsumer.Consume(topic) }
+        launch { documentConsumer.Consume(config.documentTopic) }
 
         launch { documentIndexing(documentsChannel, indexer) }
     }.join()
