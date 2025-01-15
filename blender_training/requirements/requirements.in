@@ -1,0 +1,7 @@
+loguru==0.7.3
+pandas==2.2.3
+python-dotenv==1.0.1
+scikit-learn==1.6.0
+torch==2.5.1
+tqdm==4.67.1
+wandb==0.19.1
