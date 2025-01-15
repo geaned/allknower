@@ -1,0 +1,56 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    env_file:
+      - configs/zookeeper.env
+    healthcheck:
+      test: echo stat | nc localhost 2181
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+  kafka1:
+    image: confluentinc/cp-kafka:latest
+    env_file:
+      - configs/kafka.env
+    healthcheck:
+      test: ps augwwx | egrep [S]upportedKafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9091:9091"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTNERS: LISTNER_INT://kafka1:29091,LISTENER_EXT://0.0.0.0:9091
+      KAFKA_ADVERTISED_LISTENERS: LISTNER_INT://kafka1:29091,LISTENER_EXT://localhost:9091
+  kafka2:
+    image: confluentinc/cp-kafka:latest
+    env_file:
+      - configs/kafka.env
+    healthcheck:
+      test: ps augwwx | egrep [S]upportedKafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_LISTNERS: LISTNER_INT://kafka2:29092,LISTENER_EXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: LISTNER_INT://kafka2:29092,LISTENER_EXT://localhost:9092
+  kafka3:
+    image: confluentinc/cp-kafka:latest
+    env_file:
+      - configs/kafka.env
+    healthcheck:
+      test: ps augwwx | egrep [S]upportedKafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_LISTNERS: LISTNER_INT://kafka3:29093,LISTENER_EXT://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: LISTNER_INT://kafka3:29093,LISTENER_EXT://localhost:9093
