@@ -1,5 +1,6 @@
 package com.example
 
+import com.google.gson.annotations.SerializedName
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -19,7 +20,7 @@ data class SearchRequest(
 @Serializable
 data class VectorSearchRequest(
     val embedding: List<Float>,
-    val isText: Boolean
+    @SerializedName("is_text") val isText: Boolean
 )
 
 @Serializable
@@ -82,6 +83,7 @@ fun Application.configureRouting(logger: KLogger, app: App) {
                 call.response.headers.append("X-Request-Id", requestId)
                 call.respond(HttpStatusCode.OK, Json.encodeToString(response))
             } catch (e: Exception) {
+                logger.error { "Error processing request: ${e.message}." }
                 call.response.headers.append("X-Request-Id", call.request.headers["X-Request-Id"].toString())
                 call.respond(
                     HttpStatusCode.InternalServerError,
