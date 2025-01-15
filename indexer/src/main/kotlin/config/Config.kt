@@ -14,6 +14,5 @@ data class DocumentConsumerConfig(
 
 data class Config(
     @ConfigAlias("index_directory") val indexDirectory: String,
-    @ConfigAlias("document_topic") val documentTopic: String,
     @ConfigAlias("consumer") val documentConsumerConfig: DocumentConsumerConfig,
 )

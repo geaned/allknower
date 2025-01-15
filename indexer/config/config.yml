@@ -1,7 +1,5 @@
 index_directory: "index/v4"
 
-document_topic: "wiki-parsed"
-
 consumer:
   bootstrap_servers: "localhost:9091,localhost:9092,localhost:9093"
   group_id: "allknower-indexer"

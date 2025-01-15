@@ -35,7 +35,7 @@ data class Image(
     @SerializedName("crc64") val crc64: String, // UUIDv9
     @SerializedName("image") val image: String, // Base64-encoded image
     @SerializedName("embedding") val embedding: List<Float>,
-    @SerializedName("metadata") val metadata: Metadata
+    @SerializedName("metadata") val metadata: Metadata?
 )
 
 data class Metadata(
