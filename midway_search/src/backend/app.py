@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -13,6 +14,7 @@ from loguru import logger
 from common.log import setup_logging
 from common.log.handler import StreamJsonHandler
 
+from src.backend.constants import DEFAULT_LATENCY_VALUE
 from src.backend.enums import VectorSearchType
 from src.backend.exceptions import NoDocumentsFoundError, RankingError
 from src.backend.metrics import error_count
@@ -60,8 +62,9 @@ async def get_vector_search_documents(
     request_id: str,
     client: httpx.AsyncClient,
     search_type: str,
-    default_latency_value: float = 0,
+    default_latency_value: float = DEFAULT_LATENCY_VALUE,
 ) -> BaseSearchResponse:
+    e2e_latency = time.monotonic()
     with logger.contextualize(search_type=search_type):
         logger.info("Getting query embedding from QueryEmbedder")
         query_embedder_response = await client.post(
@@ -107,8 +110,9 @@ async def get_vector_search_documents(
 def convert_docs(docs: list[BaseSearchDocument]) -> list[MidwaySearchDocument]:
     return [MidwaySearchDocument.model_validate(doc.model_dump()) for doc in docs]
 
-@app.post("/rank", response_model=list[MidwaySearchDocument])
-async def search(request: MidwaySearchRequest, default_latency_value: float = 0) -> MidwaySearchResponse:
+@app.post("/search")
+async def search(request: MidwaySearchRequest, default_latency_value: float = DEFAULT_LATENCY_VALUE) -> MidwaySearchResponse:
+    e2e_latency = time.monotonic()
     with logger.contextualize(request=request.model_dump(mode="json")):
         request_json = request.model_dump(mode="json")
         query = request_json["query"]
@@ -166,6 +170,7 @@ async def search(request: MidwaySearchRequest, default_latency_value: float = 0)
                     query_embedder_request,
                 )
 
+                midway_latency = time.monotonic()
                 if full_text_search_docs_response.status_code == httpx.codes.OK:
                     full_text_search_docs = full_text_search_docs_response.json()["documents"]
                     logger.bind(documents_length=len(full_text_search_docs)).info(
@@ -182,13 +187,15 @@ async def search(request: MidwaySearchRequest, default_latency_value: float = 0)
 
                     logger.bind(
                         docs_samples=[
-                            doc.contents[0].content[:50] 
+                            doc.content[:50] 
                             for doc in full_text_search_docs_ranked
                         ]
                     ).info("Ranked documents from full-text search")
                 else:
                     logger.warning("No documents were received from full-text search")
                     full_text_search_docs_ranked, full_text_search_scores  = [], []
+                
+                midway_latency = time.monotonic() - midway_latency
 
                 if query_embedder_request.status_code == httpx.codes.OK:
                     logger.bind(search_type="text").info("Got query embedding from QueryEmbedder")
@@ -283,17 +290,17 @@ async def search(request: MidwaySearchRequest, default_latency_value: float = 0)
                         "vector_search_image_scores": vector_search_image_docs_response.scores,
                         "blender_scores": [score for _, score in blender_docs_scores],
                         "metrics": {
-                            "fulltext_search_latency": full_text_search_docs_response.json()["latency"]
-    vector_search_text_latency: float
-    vector_search_image_latency: float
-    midway_latency: float
-    blender_latency: float
-    e2e_latency: float"
+                            "fulltext_search_latency": full_text_search_docs_response.json()["latency"],
+                            "vector_search_text_latency": vector_search_text_docs_response.model_dump()["latency"],
+                            "vector_search_image_latency": vector_search_image_docs_response.model_dump()["latency"],
+                            "midway_latency": midway_latency * 1000,
+                            "blender_latency": (full_text_search_docs_blender_response.json()["latency"] + vector_search_text_docs_blender_response.json()["latency"] + vector_search_image_docs_blender_response.json()["latency"]) * 1000,
+                            "e2e_latency": (time.monotonic() - e2e_latency) * 1000,
                         }
                     }
                 )
             except:
-                pass
+                return MidwaySearchResponse()
 
 
 @app.exception_handler(requests.RequestException)

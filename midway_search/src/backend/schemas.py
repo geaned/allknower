@@ -2,6 +2,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from src.backend.constants import DEFAULT_LATENCY_VALUE
+
 
 class BaseSearchDocument(BaseModel):
     doc_id: str
@@ -47,24 +49,24 @@ class MidwaySearchRequest(BaseModel):
 
 
 class MetricsModel(BaseModel):
-    fulltext_search_latency: float
-    vector_search_text_latency: float
-    vector_search_image_latency: float
-    midway_latency: float
-    blender_latency: float
-    e2e_latency: float
+    fulltext_search_latency: float = DEFAULT_LATENCY_VALUE
+    vector_search_text_latency: float = DEFAULT_LATENCY_VALUE
+    vector_search_image_latency: float = DEFAULT_LATENCY_VALUE
+    midway_latency: float = DEFAULT_LATENCY_VALUE
+    blender_latency: float = DEFAULT_LATENCY_VALUE
+    e2e_latency: float = DEFAULT_LATENCY_VALUE
 
 
 class MidwaySearchResponse(BaseModel):
-    full_text_search_docs: list[MidwaySearchDocument]
-    vector_search_text_docs: list[MidwaySearchDocument]
-    vector_search_image_docs: list[MidwaySearchDocument]
-    blender_docs: list[MidwaySearchDocument]
-    full_text_search_scores: list[float]
-    vector_search_text_scores: list[float]
-    vector_search_image_scores: list[float]
-    blender_scores: list[float]
-    metrics: MetricsModel
+    full_text_search_docs: list[MidwaySearchDocument] = Field(default_factory=list)
+    vector_search_text_docs: list[MidwaySearchDocument] = Field(default_factory=list)
+    vector_search_image_docs: list[MidwaySearchDocument] = Field(default_factory=list)
+    blender_docs: list[MidwaySearchDocument] = Field(default_factory=list)
+    full_text_search_scores: list[float] = Field(default_factory=list)
+    vector_search_text_scores: list[float] = Field(default_factory=list)
+    vector_search_image_scores: list[float] = Field(default_factory=list)
+    blender_scores: list[float] = Field(default_factory=list)
+    metrics: MetricsModel = Field(default_factory=MetricsModel)
 
 
 class ErrorResponse(BaseModel):

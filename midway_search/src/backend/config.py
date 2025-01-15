@@ -13,7 +13,7 @@ class QueryEmbedderAPIConfig(BaseSettings):
 class BaseSearchAPIConfig(BaseSettings):
     base_url: str = "http://195.70.199.13:8081"
     full_text_search_enpoint: str = "basesearch/search"
-    vector_search_endpoint: str = "vector_search"
+    vector_search_endpoint: str = "vectorsearch/search"
 
 
 class BlenderAPIConfig(BaseSettings):
