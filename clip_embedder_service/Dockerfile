@@ -1,4 +1,3 @@
-# FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime AS base
 FROM python:3.11-slim AS base
 
 WORKDIR /app
@@ -41,6 +40,8 @@ COPY requirements/requirements.txt requirements/requirements.txt
 RUN --mount=type=secret,id=pip.conf,dst=/etc/pip.conf \
     pip install --no-cache-dir -r requirements/requirements.txt
 
+COPY log_conf.yaml log_conf.yaml
+
 # download & unpack the model
 # ENV AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL} \
 #     S3_BUCKET_NAME=${S3_BUCKET_NAME} \
@@ -51,9 +52,9 @@ RUN --mount=type=secret,id=pip.conf,dst=/etc/pip.conf \
 #     AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
 #     python /app/src/model/download_model.py
 
-COPY clip_embedder_service.py clip_embedder_service.py
+COPY main.py main.py
 # expose ports for application server and Prometheus metrics
 EXPOSE ${APP_PORT}
 
 ENTRYPOINT ["tini", "-g", "--"]
-CMD python clip_embedder_service.py --port ${APP_PORT}
+CMD python main.py --port ${APP_PORT}

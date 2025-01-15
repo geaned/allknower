@@ -2,7 +2,7 @@ version: '3.7'
 services:
   embedder:
     build:
-      context: ./CLIP-for-embedding-generation
+      context: clip_embedder_service
     ports:
       - "8766:8766"
     volumes:

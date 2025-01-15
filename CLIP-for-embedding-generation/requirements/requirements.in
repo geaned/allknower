@@ -1,7 +1,0 @@
-accelerate
-fastapi
-pillow
-pip-tools~=7.4.1
-torch
-transformers
-uvicorn
