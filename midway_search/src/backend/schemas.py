@@ -20,6 +20,7 @@ class BaseSearchDocument(BaseModel):
 class BaseSearchResponse(BaseModel):
     documents: list[BaseSearchDocument]
     latency: float
+    scores: list[float] = Field(default_factory=list)
 
 
 class BlenderResponse(BaseModel):
@@ -61,7 +62,7 @@ class MidwaySearchResponse(BaseModel):
     blender_docs: list[MidwaySearchDocument]
     full_text_search_scores: list[float]
     vector_search_text_scores: list[float]
-    vector_search_image_scortes: list[float]
+    vector_search_image_scores: list[float]
     blender_scores: list[float]
     metrics: MetricsModel
 

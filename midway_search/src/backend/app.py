@@ -104,8 +104,8 @@ async def get_vector_search_documents(
         return BaseSearchResponse.model_validate({"documents": [], "latency": default_latency_value})
 
 
-def basesearch_docs_to_
-
+def convert_docs(docs: list[BaseSearchDocument]) -> list[MidwaySearchDocument]:
+    return [MidwaySearchDocument.model_validate(doc.model_dump()) for doc in docs]
 
 @app.post("/rank", response_model=list[MidwaySearchDocument])
 async def search(request: MidwaySearchRequest, default_latency_value: float = 0) -> MidwaySearchResponse:
@@ -188,7 +188,7 @@ async def search(request: MidwaySearchRequest, default_latency_value: float = 0)
                     ).info("Ranked documents from full-text search")
                 else:
                     logger.warning("No documents were received from full-text search")
-                    full_text_search_docs_ranked, full_text_search_scores = [], []
+                    full_text_search_docs_ranked, full_text_search_scores  = [], []
 
                 if query_embedder_request.status_code == httpx.codes.OK:
                     logger.bind(search_type="text").info("Got query embedding from QueryEmbedder")
@@ -246,22 +246,52 @@ async def search(request: MidwaySearchRequest, default_latency_value: float = 0)
                         vector_search_image_docs_blender_request = BlenderResponse.model_validate(
                             {"scores": [], "latency": default_latency_value},
                         )
+                    
+                    (
+                        full_text_search_docs_blender_response,
+                        vector_search_text_docs_blender_response,
+                        vector_search_image_docs_blender_response,
+                    ) = await asyncio.gather(
+                        full_text_search_docs_blender_request,
+                        vector_search_text_docs_blender_request,
+                        vector_search_image_docs_blender_request,
+                    )
+
+                    blender_docs_scores = \
+                    list(
+                        zip(full_text_search_docs_ranked, full_text_search_docs_blender_response.json()["scores"]),
+                    ) + \
+                    list(
+                        zip(vector_search_text_docs_response.documents, vector_search_text_docs_blender_response.json()["scores"]),
+                    ) + \
+                    list(
+                        zip(vector_search_image_docs_response.documents, vector_search_image_docs_blender_response.json()["scores"]),
+                    )
+                    blender_docs_scores.sort(lambda x: x[1], reverse=True)
                 else:
                     logger.warning("Skipping Blender scoring for all documents")
-                    return MidwaySearchResponse.model_validate(
-                        {
-                            "full_text_search_docs": full_text_search_docs_ranked,
-                            "vector_search_text_docs": [for doc in vector_search_text_docs_response.documents],
-    vector_search_image_docs: list[MidwaySearchDocument]
-    blender_docs: list[MidwaySearchDocument]
-    full_text_search_scores: list[float]
-    vector_search_text_scores: list[float]
-    vector_search_image_scortes: list[float]
-    blender_scores: list[float]
-    metrics: MetricsModel
+                    blender_docs_scores = []
+
+                return MidwaySearchResponse.model_validate(
+                    {
+                        "full_text_search_docs": convert_docs(full_text_search_docs_ranked),
+                        "vector_search_text_docs": convert_docs(vector_search_text_docs_response.documents),
+                        "vector_search_image_docs": convert_docs(vector_search_image_docs_response.documents),
+                        "blender_docs": convert_docs([doc for doc, _ in blender_docs_scores]),
+                        "full_text_search_scores": full_text_search_scores,
+                        "vector_search_text_scores": vector_search_text_docs_response.scores,
+                        "vector_search_image_scores": vector_search_image_docs_response.scores,
+                        "blender_scores": [score for _, score in blender_docs_scores],
+                        "metrics": {
+                            "fulltext_search_latency": full_text_search_docs_response.json()["latency"]
+    vector_search_text_latency: float
+    vector_search_image_latency: float
+    midway_latency: float
+    blender_latency: float
+    e2e_latency: float"
                         }
-                    )
-                
+                    }
+                )
             except:
                 pass
 
