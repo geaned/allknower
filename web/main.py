@@ -139,22 +139,22 @@ def main() -> None:  # noqa: PLR0912, PLR0915
                 logging.error(f"Unexpected Allknower error: {str(e)}")
                 fail = epic_fail(str(e))
 
-        if len(full_text_search_docs) != len(full_text_search_scores):
-            full_text_search_scores = [None] * len(full_text_search_docs)
-
-        if len(vector_search_text_docs) != len(vector_search_text_scores):
-            vector_search_text_scores = [None] * len(vector_search_text_docs)
-
-        if len(vector_search_image_docs) != len(vector_search_image_scores):
-            vector_search_image_scores = [None] * len(vector_search_image_docs)
-
-        if len(blender_docs) != len(blender_scores):
-            blender_scores = [None] * len(blender_docs)
-
-        if e2e_latency is not None:
-            st.markdown(f"It took Allknower **{e2e_latency:.2f}ms** in total to answer")
-
         if not fail:
+            if len(full_text_search_docs) != len(full_text_search_scores):
+                full_text_search_scores = [None] * len(full_text_search_docs)
+
+            if len(vector_search_text_docs) != len(vector_search_text_scores):
+                vector_search_text_scores = [None] * len(vector_search_text_docs)
+
+            if len(vector_search_image_docs) != len(vector_search_image_scores):
+                vector_search_image_scores = [None] * len(vector_search_image_docs)
+
+            if len(blender_docs) != len(blender_scores):
+                blender_scores = [None] * len(blender_docs)
+
+            if e2e_latency is not None:
+                st.markdown(f"It took Allknower **{e2e_latency:.2f}ms** in total to answer")
+
             cols = st.columns(4, gap="medium")
 
             with cols[0]:
