@@ -24,8 +24,6 @@ class VectorSearcher(
         val knnQuery = KnnFloatVectorQuery(searchField, query.toFloatArray(), cfg.vectorSearchNumNearestNeighbor)
         val topDocs = searcher.search(knnQuery, cfg.vectorSearchNumDocuments)
 
-        logger.info { "Found ${topDocs.scoreDocs.size} documents at vector index." }
-
         reader.close()
 
         return topDocs

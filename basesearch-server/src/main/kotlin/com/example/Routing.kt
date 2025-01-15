@@ -41,7 +41,7 @@ fun Application.configureRouting(logger: KLogger, app: App) {
                 val req = call.receive<SearchRequest>()
                 val requestId = call.request.headers["X-Request-Id"].toString()
 
-                logger.info { "Received request with X-Request-Id: $requestId: $req" }
+                logger.info { "Received request with X-Request-Id: $requestId: ${req.query}" }
 
                 val resultDocuments = app.handleFullTextSearch(query = req.query)
 
@@ -67,7 +67,7 @@ fun Application.configureRouting(logger: KLogger, app: App) {
                 val req = call.receive<VectorSearchRequest>()
                 val requestId = call.request.headers["X-Request-Id"].toString()
 
-                logger.info { "Received request with X-Request-Id: $requestId: $req" }
+                logger.info { "Received request with X-Request-Id: $requestId: ${req.embedding}" }
 
                 val resultDocuments = if (req.isText) {
                     app.handleVectorTextSearch(query = req.embedding)

@@ -87,7 +87,11 @@ class App(
     }
 
     fun handleVectorTextSearch(query: List<Float>): List<ResultDocument> {
+        logger.info { "Received vector text search request." }
+
         val topDocs = vectorTextSearcher.search(query)
+
+        logger.info { "Found ${topDocs.scoreDocs.size} documents at vector text index." }
 
         val storedFields = DirectoryReader.open(vectorTextSearcher.directory).storedFields()
 
@@ -123,7 +127,11 @@ class App(
     }
 
     fun handleVectorImageSearch(query: List<Float>): List<ResultDocument> {
+        logger.info { "Received vector image search request." }
+
         val topDocs = vectorImageSearcher.search(query)
+
+        logger.info { "Found ${topDocs.scoreDocs.size} documents at vector image index." }
 
         val storedFields = DirectoryReader.open(vectorImageSearcher.directory).storedFields()
 
