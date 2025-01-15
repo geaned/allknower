@@ -1,0 +1,30 @@
+version: '3.7'
+services:
+  clip_embedder:
+    build:
+      context: clip_embedder_service
+    ports:
+      - "8765:8765"
+    volumes:
+      - /storage/uvd174/.cache/huggingface/hub/models--openai--clip-vit-base-patch32/:/app/.cache/huggingface/hub/models--openai--clip-vit-base-patch32/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['5']
+              capabilities: [gpu]
+  text_embedder:
+    build:
+      context: text_embedder_service
+    ports:
+      - "8766:8766"
+    volumes:
+      - /storage/uvd174/.cache/huggingface/hub/models--HIT-TMG--KaLM-embedding-multilingual-mini-instruct-v1.5/:/app/.cache/huggingface/hub/models--HIT-TMG--KaLM-embedding-multilingual-mini-instruct-v1.5/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['4']
+              capabilities: [gpu]
