@@ -17,6 +17,12 @@ data class SearchRequest(
 )
 
 @Serializable
+data class VectorSearchRequest(
+    val embedding: List<Float>,
+    val isText: Boolean
+)
+
+@Serializable
 data class SearchResponse(
     val documents: List<ResultDocument>,
     val latency: Long
@@ -34,9 +40,39 @@ fun Application.configureRouting(logger: KLogger, app: App) {
                 val req = call.receive<SearchRequest>()
                 val requestId = call.request.headers["X-Request-Id"].toString()
 
-                logger.info { "Received request with X-Request-Id: $requestId and query: ${req.query}" }
+                logger.info { "Received request with X-Request-Id: $requestId: $req" }
 
-                val resultDocuments = app.handle(query = req.query)
+                val resultDocuments = app.handleFullTextSearch(query = req.query)
+
+                val response = SearchResponse(
+                    documents = resultDocuments,
+                    latency = Duration.between(start, LocalDateTime.now()).toMillis(),
+                )
+
+                call.response.headers.append("X-Request-Id", requestId)
+                call.respond(HttpStatusCode.OK, Json.encodeToString(response))
+            } catch (e: Exception) {
+                call.response.headers.append("X-Request-Id", call.request.headers["X-Request-Id"].toString())
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    "Error processing request: ${e.message}. Latency: ${Duration.between(start, LocalDateTime.now())}",
+                )
+            }
+        }
+
+        post("vectorsearch/search") {
+            val start = LocalDateTime.now()
+            try {
+                val req = call.receive<VectorSearchRequest>()
+                val requestId = call.request.headers["X-Request-Id"].toString()
+
+                logger.info { "Received request with X-Request-Id: $requestId: $req" }
+
+                val resultDocuments = if (req.isText) {
+                    app.handleVectorTextSearch(query = req.embedding)
+                } else {
+                    app.handleVectorImageSearch(query = req.embedding)
+                }
 
                 val response = SearchResponse(
                     documents = resultDocuments,

@@ -41,7 +41,7 @@ class Searcher(
             return TokenStreamComponents(tokenizer, tokenStream)
         }
     }
-    val directory = NIOFSDirectory(File(cfg.indexDirectory).toPath())
+    val directory = NIOFSDirectory(File(cfg.fullTextIndexDirectory).toPath())
 
     val termExtractor = TermExtractor()
 
