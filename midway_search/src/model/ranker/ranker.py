@@ -35,11 +35,14 @@ class Ranker:
             self._ranker = DummyRanker()
 
     @rank_latency.labels(
-        os.environ["MIDWAY_SEARCH_BACKEND__PROMETHEUS__APP_NAME"], "/rank"
+        os.environ["MIDWAY_SEARCH_BACKEND__PROMETHEUS__APP_NAME"], "/search"
     ).time()
     def rank(
         self, docs: list[BaseSearchDocument], top_n: int = 10
     ) -> tuple[list[BaseSearchDocument], list[float]]:
+        if not docs:
+            return [], []
+
         features = [doc.features for doc in docs]
 
         logger.info("Started prediction")

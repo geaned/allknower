@@ -11,8 +11,8 @@ class QueryEmbedderAPIConfig(BaseSettings):
 
 
 class BaseSearchAPIConfig(BaseSettings):
-    base_url: str = "http://195.70.199.13:8081"
-    full_text_search_enpoint: str = "basesearch/search"
+    base_url: str = "http://158.160.39.15:8081"
+    full_text_search_endpoint: str = "basesearch/search"
     vector_search_endpoint: str = "vectorsearch/search"
 
 

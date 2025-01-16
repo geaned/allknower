@@ -6,17 +6,17 @@ from src.backend.constants import DEFAULT_LATENCY_VALUE
 
 
 class BaseSearchDocument(BaseModel):
-    doc_id: str
-    page_url: str
+    docId: str
+    pageUrl: str
     title: str
     embedding: list[float]
-    is_text: bool
-    # if is_text = True, two fields below are not None
-    content: str | None
-    features: list[float] | None
-    # if is_text = False, two fields below are not None
-    metadata_title: str | None
-    metadata_description: str | None
+    isText: bool
+    # if isText = True, two fields below are not None
+    content: str | None = None
+    features: list[float] | None = None
+    # if isText = False, two fields below are not None
+    metadataTitle: str | None = None
+    metadataDescription: str | None = None
 
 
 class BaseSearchResponse(BaseModel):
@@ -36,10 +36,10 @@ class MidwaySearchDocument(BaseModel):
     title: str
     is_text: bool
     # if is_text = True, field below is not None
-    content: str | None
+    content: str | None = None
     # if is_text = False, two fields below are not None
-    metadata_title: str | None
-    metadata_description: str | None
+    metadata_title: str | None = None
+    metadata_description: str | None = None
 
 
 class MidwaySearchRequest(BaseModel):
@@ -71,3 +71,15 @@ class MidwaySearchResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class DefaultBlenderResponse:
+    def __init__(self):
+        self.scores = []
+        self.latency = 0
+
+    def json(self) -> str:
+        return {
+            "scores": self.scores,
+            "latency": self.latency,
+        }
