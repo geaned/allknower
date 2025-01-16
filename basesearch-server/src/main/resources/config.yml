@@ -1,0 +1,9 @@
+full_text_index_directory: "index/v4"
+vector_text_index_directory: "vector_text/index/v4"
+vector_image_index_directory: "vector_image/index/v4"
+
+l0_num_docs: 10000
+l1_num_docs: 1000
+
+vector_search_num_nearest_neighbor: 10
+vector_search_num_documents: 5

@@ -1,11 +1,11 @@
 version: '3.7'
 services:
-  midway_search:
+  basesearch-server:
     build:
-      context: ./midway_search/
+      context: ./basesearch-server/
     ports:
-      - "7866:7866"
-      - "8090:8090"
+      - "8081:8081"
     volumes:
-      - /storage/kliffeup/kliffeup/allknower/data/:/app/data/
-      - /storage/kliffeup/kliffeup/allknower/common/:/app/common/
+      - /home/allknower/index_v2:/app/index
+      - /home/allknower/vector_image:/app/vector_image
+      - /home/allknower/vector_text:/app/vector_text
