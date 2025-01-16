@@ -1,11 +1,22 @@
 version: '3.7'
 services:
-  midway_search:
+  indexer:
     build:
-      context: ./midway_search/
-    ports:
-      - "7866:7866"
-      - "8090:8090"
+      context: ./indexer/
+    network_mode: host
     volumes:
-      - /storage/kliffeup/kliffeup/allknower/data/:/app/data/
-      - /storage/kliffeup/kliffeup/allknower/common/:/app/common/
+      - /home/allknower/index_v2:/app/index
+  vector-text-indexer:
+    build:
+      context: ./indexer/
+      dockerfile: Dockerfile_vector_text
+    network_mode: host
+    volumes:
+      - /home/allknower/vector_text/index:/app/index
+  vector-image-indexer:
+    build:
+      context: ./indexer/
+      dockerfile: Dockerfile_vector_image
+    network_mode: host
+    volumes:
+      - /home/allknower/vector_image/index:/app/index

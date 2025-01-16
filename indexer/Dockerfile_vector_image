@@ -1,0 +1,22 @@
+FROM openjdk:17-jdk-slim as build
+
+WORKDIR /app
+
+COPY build.gradle.kts gradlew ./
+COPY gradle ./gradle
+
+RUN ./gradlew build --no-daemon
+
+COPY src ./src
+
+RUN ./gradlew installDist --no-daemon
+
+
+FROM openjdk:17-jdk-slim
+
+WORKDIR /app
+
+COPY --from=build /app/build/install/app /app
+COPY config ./config
+
+CMD ["./bin/app", "vector-image", "allknower-vector-image-indexer-v2"]

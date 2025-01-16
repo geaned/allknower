@@ -1,0 +1,10 @@
+index_directory: "index/v4"
+
+document_topic: "wiki-parsed-v2"
+
+consumer:
+  bootstrap_servers: "localhost:9091,localhost:9092,localhost:9093"
+  poll_duration_millis: 10000
+  delay_period_millis: 2000
+  max_document_batch: 1000
+  batch_duration_seconds: 30
